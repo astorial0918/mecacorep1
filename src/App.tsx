@@ -1,6 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { initializeApp } from 'firebase/app';
-import { getFirestore, collection, addDoc, getDocs, updateDoc, doc } from 'firebase/firestore';
+import { 
+  getFirestore, 
+  collection, 
+  addDoc, 
+  getDocs, 
+  updateDoc, 
+  doc, 
+  query, 
+  where 
+} from 'firebase/firestore';
 
 // --- CONFIGURACIÓN DE FIREBASE ---
 const firebaseConfig = {
@@ -15,7 +24,63 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
-// --- COMPONENTES DE VISTAS ---
+// --- MODAL DE INSCRIPCIÓN PARA ESTUDIANTES ---
+const ModalInscripcion = ({ evento, onClose }: { evento: any; onClose: () => void }) => {
+  const [alumno, setAlumno] = useState({ nombre: '', control: '', correo: '' });
+  const [enviando, setEnviando] = useState(false);
+  const [exito, setExito] = useState(false);
+
+  const handleInscribir = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setEnviando(true);
+    try {
+      await addDoc(collection(db, "registros_eventos"), {
+        eventoId: evento.id,
+        eventoTitulo: evento.titulo,
+        nombreAlumno: alumno.nombre,
+        controlAlumno: alumno.control,
+        correoAlumno: alumno.correo,
+        fechaRegistro: new Date().toISOString()
+      });
+      setExito(true);
+    } catch (err) {
+      alert("Error al completar la inscripción. Inténtalo de nuevo.");
+    }
+    setEnviando(false);
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+      <div className="bg-white rounded-xl max-w-md w-full p-6 shadow-2xl relative">
+        <button onClick={onClose} className="absolute top-3 right-3 text-gray-400 hover:text-gray-600 font-bold text-xl">✕</button>
+        {exito ? (
+          <div className="text-center py-6 space-y-4">
+            <span className="text-5xl">🎉</span>
+            <h3 className="text-2xl font-bold text-green-600">¡Inscripción Exitosa!</h3>
+            <p className="text-sm text-gray-600">Te has registrado correctamente en <strong>{evento.titulo}</strong>.</p>
+            <button onClick={onClose} className="w-full bg-blue-900 text-white font-bold py-2 rounded-lg hover:bg-blue-800 transition">Cerrar</button>
+          </div>
+        ) : (
+          <form onSubmit={handleInscribir} className="space-y-4">
+            <h3 className="text-xl font-bold text-blue-900">Inscripción a Evento</h3>
+            <p className="text-sm text-gray-500 mb-2">Evento: <strong>{evento.titulo}</strong></p>
+            <input required type="text" placeholder="Nombre completo del alumno" className="w-full p-2 border rounded-lg outline-none focus:ring-2 focus:ring-blue-500" value={alumno.nombre} onChange={e => setAlumno({ ...alumno, nombre: e.target.value })} />
+            <input required type="text" placeholder="Número de Control" className="w-full p-2 border rounded-lg outline-none focus:ring-2 focus:ring-blue-500" value={alumno.control} onChange={e => setAlumno({ ...alumno, control: e.target.value })} />
+            <input required type="email" placeholder="Correo electrónico" className="w-full p-2 border rounded-lg outline-none focus:ring-2 focus:ring-blue-500" value={alumno.correo} onChange={e => setAlumno({ ...alumno, correo: e.target.value })} />
+            <div className="flex gap-2 pt-2">
+              <button type="button" onClick={onClose} className="w-1/2 bg-gray-200 text-gray-700 py-2 rounded-lg font-bold hover:bg-gray-300">Cancelar</button>
+              <button disabled={enviando} type="submit" className="w-1/2 bg-blue-900 text-white py-2 rounded-lg font-bold hover:bg-blue-800 transition disabled:opacity-50">
+                {enviando ? 'Inscribiendo...' : 'Confirmar'}
+              </button>
+            </div>
+          </form>
+        )}
+      </div>
+    </div>
+  );
+};
+
+// --- VISTAS PÚBLICAS ---
 
 const Inicio = () => (
   <div className="space-y-8 animate-fade-in">
@@ -23,35 +88,121 @@ const Inicio = () => (
       <h1 className="text-4xl font-bold mb-4">Comité MecaCore</h1>
       <p className="text-lg opacity-90">Innovación, Tecnología y Desarrollo en Mecatrónica</p>
     </div>
-    
     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
       <div className="bg-white p-6 rounded-xl shadow-md border border-gray-100">
-        <h2 className="text-2xl font-bold mb-4 text-blue-900">Actividades Recientes</h2>
-        <ul className="space-y-3">
-          <li className="p-3 bg-gray-50 rounded-lg border-l-4 border-blue-500">
-            <strong>Taller de Soldadura</strong> - 12 de Octubre
-          </li>
-          <li className="p-3 bg-gray-50 rounded-lg border-l-4 border-green-500">
-            <strong>Conferencia de Robótica</strong> - Próximamente
-          </li>
-        </ul>
+        <h2 className="text-2xl font-bold mb-4 text-blue-900">Bienvenido a la Plataforma</h2>
+        <p className="text-gray-600 leading-relaxed">
+          Consulta y participa en todas las actividades organizadas por el comité de Mecatrónica. Regístrate a talleres, asiste a conferencias y entérate de las últimas noticias del área social y cultural.
+        </p>
       </div>
       <div className="bg-white p-6 rounded-xl shadow-md border border-gray-100">
-        <h2 className="text-2xl font-bold mb-4 text-blue-900">Calendario</h2>
-        <div className="flex items-center justify-center h-40 bg-gray-100 rounded-lg text-gray-500">
-          [Vista interactiva del calendario]
-        </div>
+        <h2 className="text-2xl font-bold mb-4 text-blue-900">Accesos Rápidos</h2>
+        <ul className="space-y-3">
+          <li className="p-3 bg-blue-50 rounded-lg text-blue-900 font-medium">✨ Explora las próximas conferencias</li>
+          <li className="p-3 bg-green-50 rounded-lg text-green-900 font-medium">🛠️ Inscríbete a los talleres prácticos</li>
+          <li className="p-3 bg-purple-50 rounded-lg text-purple-900 font-medium">📰 Mantente informado en la sección Cultural</li>
+        </ul>
       </div>
     </div>
   </div>
 );
 
-const EnConstruccion = ({ titulo }: { titulo: string }) => (
-  <div className="text-center py-20 animate-fade-in">
-    <h2 className="text-3xl font-bold text-gray-700 mb-4">{titulo}</h2>
-    <p className="text-gray-500">Esta sección está siendo desarrollada por el equipo MecaCore.</p>
-  </div>
-);
+const VistaPublicaciones = () => {
+  const [publicaciones, setPublicaciones] = useState<any[]>([]);
+  const [cargando, setCargando] = useState(true);
+
+  useEffect(() => {
+    const obtenerPosts = async () => {
+      try {
+        const snap = await getDocs(collection(db, "publicaciones"));
+        setPublicaciones(snap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+      } catch (e) {
+        console.error(e);
+      }
+      setCargando(false);
+    };
+    obtenerPosts();
+  }, []);
+
+  return (
+    <div className="space-y-6">
+      <h2 className="text-3xl font-bold text-blue-900 border-b pb-2">Social y Cultural</h2>
+      {cargando ? <p className="text-gray-500">Cargando publicaciones...</p> : null}
+      {!cargando && publicaciones.length === 0 ? <p className="text-gray-500">No hay publicaciones recientes por el momento.</p> : null}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {publicaciones.map((pub) => (
+          <div key={pub.id} className="bg-white p-6 rounded-xl shadow-md border border-gray-100 flex flex-col justify-between">
+            <div>
+              <span className="text-xs font-bold text-purple-600 uppercase bg-purple-50 px-2 py-1 rounded">Anuncio</span>
+              <h3 className="text-xl font-bold text-gray-800 mt-2 mb-2">{pub.titulo}</h3>
+              <p className="text-gray-600 text-sm whitespace-pre-line">{pub.contenido}</p>
+            </div>
+            <div className="mt-4 pt-4 border-t text-xs text-gray-400 flex justify-between">
+              <span>Por: {pub.autor || 'Coordinación'}</span>
+              <span>{pub.fecha ? new Date(pub.fecha).toLocaleDateString() : ''}</span>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
+
+const VistaEventosPublicos = ({ categoria }: { categoria: 'talleres' | 'conferencias' }) => {
+  const [eventos, setEventos] = useState<any[]>([]);
+  const [cargando, setCargando] = useState(true);
+  const [eventoSeleccionado, setEventoSeleccionado] = useState<any>(null);
+
+  useEffect(() => {
+    const obtenerEventos = async () => {
+      try {
+        const q = query(collection(db, "eventos"), where("categoria", "==", categoria));
+        const snap = await getDocs(q);
+        setEventos(snap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+      } catch (e) {
+        console.error(e);
+      }
+      setCargando(false);
+    };
+    obtenerEventos();
+  }, [categoria]);
+
+  const tituloSeccion = categoria === 'talleres' ? 'Talleres Disponibles' : 'Conferencias';
+
+  return (
+    <div className="space-y-6">
+      <h2 className="text-3xl font-bold text-blue-900 border-b pb-2">{tituloSeccion}</h2>
+      {cargando ? <p className="text-gray-500">Cargando actividades...</p> : null}
+      {!cargando && eventos.length === 0 ? <p className="text-gray-500">No hay {categoria} programados por el momento.</p> : null}
+      
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {eventos.map((ev) => (
+          <div key={ev.id} className="bg-white p-6 rounded-xl shadow-md border border-gray-100 flex flex-col justify-between">
+            <div>
+              <div className="flex justify-between items-start mb-2">
+                <span className="text-xs font-bold text-blue-600 uppercase bg-blue-50 px-2 py-1 rounded">{ev.categoria}</span>
+                <span className="text-xs text-gray-400 font-medium">{ev.fecha} - {ev.hora}</span>
+              </div>
+              <h3 className="text-lg font-bold text-gray-800 mb-1">{ev.titulo}</h3>
+              <p className="text-xs text-blue-800 font-semibold mb-2">Expositor/Imparte: {ev.expositor}</p>
+              <p className="text-gray-600 text-sm mb-4">{ev.descripcion}</p>
+            </div>
+            <div>
+              <p className="text-xs text-gray-500 mb-3">Cupo disponible: <strong className="text-gray-800">{ev.cupo} lugares</strong></p>
+              <button onClick={() => setEventoSeleccionado(ev)} className="w-full bg-blue-900 text-white font-bold py-2 rounded-lg hover:bg-blue-800 transition text-sm">
+                Inscribirme
+              </button>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {eventoSeleccionado && <ModalInscripcion evento={eventoSeleccionado} onClose={() => setEventoSeleccionado(null)} />}
+    </div>
+  );
+};
+
+// --- SOLICITUD DE ACCESO & LOGIN ---
 
 const FormularioSolicitud = ({ onVolver }: { onVolver: () => void }) => {
   const [datos, setDatos] = useState({ nombre: '', numeroControl: '', puesto: '', correoInst: '', correoPers: '', telefono: '' });
@@ -79,9 +230,7 @@ const FormularioSolicitud = ({ onVolver }: { onVolver: () => void }) => {
     <div className="max-w-md mx-auto bg-white p-8 rounded-xl shadow-lg border border-gray-100 mt-10 animate-fade-in">
       <h2 className="text-2xl font-bold text-center text-blue-900 mb-2">Solicitar Acceso</h2>
       <p className="text-sm text-center text-gray-500 mb-6">Para nuevos coordinadores y mesa directiva</p>
-      
       {mensaje && <p className="text-green-600 font-medium text-sm mb-4 text-center">{mensaje}</p>}
-      
       <form onSubmit={enviarSolicitud} className="space-y-4">
         <input required type="text" placeholder="Nombre completo" className="w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" value={datos.nombre} onChange={e => setDatos({...datos, nombre: e.target.value})} />
         <input required type="text" placeholder="Número de Control" className="w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" value={datos.numeroControl} onChange={e => setDatos({...datos, numeroControl: e.target.value})} />
@@ -89,13 +238,10 @@ const FormularioSolicitud = ({ onVolver }: { onVolver: () => void }) => {
         <input required type="email" placeholder="Correo Institucional" className="w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" value={datos.correoInst} onChange={e => setDatos({...datos, correoInst: e.target.value})} />
         <input required type="email" placeholder="Correo Personal" className="w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" value={datos.correoPers} onChange={e => setDatos({...datos, correoPers: e.target.value})} />
         <input required type="tel" placeholder="Teléfono" className="w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" value={datos.telefono} onChange={e => setDatos({...datos, telefono: e.target.value})} />
-        
         <button disabled={enviando} type="submit" className="w-full bg-blue-900 text-white font-bold py-2 rounded-lg hover:bg-blue-800 transition disabled:opacity-50">
           {enviando ? 'Enviando...' : 'Enviar Solicitud'}
         </button>
-        <button type="button" onClick={onVolver} className="w-full text-blue-600 text-sm mt-2 hover:underline">
-          Volver al Login
-        </button>
+        <button type="button" onClick={onVolver} className="w-full text-blue-600 text-sm mt-2 hover:underline">Volver al Login</button>
       </form>
     </div>
   );
@@ -112,17 +258,14 @@ const LoginAdmin = ({ onLogin }: { onLogin: (usuarioInfo: { isMaster: boolean; n
     e.preventDefault();
     setError('');
     setCargando(true);
-
     const inputLimpio = usuarioInput.trim().toLowerCase();
 
-    // 1. Validar Master Admin
     if (inputLimpio === 'mccore@admin.com' && password === 'MecaCore2004') {
       onLogin({ isMaster: true, nombre: 'Master Admin' });
       setCargando(false);
       return;
     }
 
-    // 2. Validar Coordinadores Aprobados en Firestore
     try {
       const querySnapshot = await getDocs(collection(db, "solicitudes_admin"));
       const usuarioEncontrado = querySnapshot.docs.find(doc => {
@@ -143,7 +286,6 @@ const LoginAdmin = ({ onLogin }: { onLogin: (usuarioInfo: { isMaster: boolean; n
     } catch (err) {
       setError('Error al consultar la base de datos.');
     }
-
     setCargando(false);
   };
 
@@ -154,35 +296,253 @@ const LoginAdmin = ({ onLogin }: { onLogin: (usuarioInfo: { isMaster: boolean; n
       <h2 className="text-2xl font-bold text-center text-blue-900 mb-6">Acceso MecaCore</h2>
       {error && <p className="text-red-500 text-sm mb-4 text-center">{error}</p>}
       <form onSubmit={handleLogin} className="space-y-4">
-        <input 
-          required 
-          type="text" 
-          placeholder="Usuario asignado o Correo" 
-          className="w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" 
-          value={usuarioInput} 
-          onChange={(e) => setUsuarioInput(e.target.value)} 
-        />
-        <input 
-          required 
-          type="password" 
-          placeholder="Contraseña" 
-          className="w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" 
-          value={password} 
-          onChange={(e) => setPassword(e.target.value)} 
-        />
+        <input required type="text" placeholder="Usuario asignado o Correo" className="w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" value={usuarioInput} onChange={(e) => setUsuarioInput(e.target.value)} />
+        <input required type="password" placeholder="Contraseña" className="w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" value={password} onChange={(e) => setPassword(e.target.value)} />
         <button disabled={cargando} type="submit" className="w-full bg-blue-900 text-white font-bold py-2 rounded-lg hover:bg-blue-800 transition disabled:opacity-50">
           {cargando ? 'Verificando...' : 'Iniciar Sesión'}
         </button>
       </form>
       <div className="mt-6 text-center border-t pt-4">
         <p className="text-sm text-gray-600 mb-2">¿Eres nuevo coordinador?</p>
-        <button onClick={() => setMostrarSolicitud(true)} className="text-blue-600 text-sm font-bold hover:underline">
-          Solicitar Acceso
-        </button>
+        <button onClick={() => setMostrarSolicitud(true)} className="text-blue-600 text-sm font-bold hover:underline">Solicitar Acceso</button>
       </div>
     </div>
   );
 };
+
+// --- PANEL DE CONTROL DEL COORDINADOR COMPLETO ---
+
+const PanelCoordinador = ({ usuario, puesto, onLogout }: { usuario: string; puesto?: string; onLogout: () => void }) => {
+  const [pestana, setPestana] = useState<'eventos' | 'publicaciones' | 'asistencias'>('eventos');
+
+  // Form Eventos
+  const [nuevoEvento, setNuevoEvento] = useState({ titulo: '', categoria: 'talleres', expositor: '', fecha: '', hora: '', cupo: '30', descripcion: '' });
+  const [guardandoEvento, setGuardandoEvento] = useState(false);
+
+  // Form Publicaciones
+  const [nuevaPub, setNuevaPub] = useState({ titulo: '', contenido: '' });
+  const [guardandoPub, setGuardandoPub] = useState(false);
+
+  // Asistencias
+  const [misEventos, setMisEventos] = useState<any[]>([]);
+  const [eventoSeleccionadoId, setEventoSeleccionadoId] = useState('');
+  const [listaAlumnos, setListaAlumnos] = useState<any[]>([]);
+  const [cargandoLista, setCargandoLista] = useState(false);
+
+  // Cargar eventos del coordinador
+  const cargarEventos = async () => {
+    try {
+      const snap = await getDocs(collection(db, "eventos"));
+      const docs = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      setMisEventos(docs);
+      if (docs.length > 0 && !eventoSeleccionadoId) {
+        setEventoSeleccionadoId(docs[0].id);
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  useEffect(() => {
+    cargarEventos();
+  }, []);
+
+  // Cargar lista de asistentes cuando cambie el evento seleccionado
+  useEffect(() => {
+    if (!eventoSeleccionadoId) return;
+    const cargarAsistentes = async () => {
+      setCargandoLista(true);
+      try {
+        const q = query(collection(db, "registros_eventos"), where("eventoId", "==", eventoSeleccionadoId));
+        const snap = await getDocs(q);
+        setListaAlumnos(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+      } catch (e) {
+        console.error(e);
+      }
+      setCargandoLista(false);
+    };
+    cargarAsistentes();
+  }, [eventoSeleccionadoId]);
+
+  const handleCrearEvento = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setGuardandoEvento(true);
+    try {
+      await addDoc(collection(db, "eventos"), {
+        ...nuevoEvento,
+        creador: usuario,
+        puestoCreador: puesto,
+        fechaCreacion: new Date().toISOString()
+      });
+      alert("¡Evento creado y publicado con éxito!");
+      setNuevoEvento({ titulo: '', categoria: 'talleres', expositor: '', fecha: '', hora: '', cupo: '30', descripcion: '' });
+      cargarEventos();
+    } catch (err) {
+      alert("Error al guardar el evento.");
+    }
+    setGuardandoEvento(false);
+  };
+
+  const handleCrearPublicacion = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setGuardandoPub(true);
+    try {
+      await addDoc(collection(db, "publicaciones"), {
+        ...nuevaPub,
+        autor: usuario,
+        fecha: new Date().toISOString()
+      });
+      alert("¡Anuncio publicado en la sección Social y Cultural!");
+      setNuevaPub({ titulo: '', contenido: '' });
+    } catch (err) {
+      alert("Error al crear la publicación.");
+    }
+    setGuardandoPub(false);
+  };
+
+  return (
+    <div className="bg-white p-6 rounded-xl shadow-lg border border-gray-100 animate-fade-in space-y-6">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center border-b pb-4 gap-4">
+        <div>
+          <h2 className="text-2xl font-bold text-blue-900">¡Bienvenido, {usuario}!</h2>
+          <p className="text-sm text-gray-500">Rol: <span className="font-semibold text-blue-700">{puesto}</span></p>
+        </div>
+        <button onClick={onLogout} className="bg-red-100 text-red-600 px-4 py-2 rounded-lg font-medium hover:bg-red-200 transition">
+          Cerrar Sesión
+        </button>
+      </div>
+
+      {/* Menú de Sub-secciones */}
+      <div className="flex space-x-2 border-b pb-3">
+        <button onClick={() => setPestana('eventos')} className={`px-4 py-2 rounded-lg text-sm font-bold transition ${pestana === 'eventos' ? 'bg-blue-900 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>
+          📅 Crear Eventos
+        </button>
+        <button onClick={() => setPestana('publicaciones')} className={`px-4 py-2 rounded-lg text-sm font-bold transition ${pestana === 'publicaciones' ? 'bg-blue-900 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>
+          📰 Publicar Anuncios
+        </button>
+        <button onClick={() => setPestana('asistencias')} className={`px-4 py-2 rounded-lg text-sm font-bold transition ${pestana === 'asistencias' ? 'bg-blue-900 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>
+          📋 Listas y Asistencias
+        </button>
+      </div>
+
+      {/* MÓDULO 1: CREAR EVENTO */}
+      {pestana === 'eventos' && (
+        <form onSubmit={handleCrearEvento} className="space-y-4 max-w-2xl">
+          <h3 className="text-xl font-bold text-gray-800">Crear Nuevo Taller o Conferencia</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-bold text-gray-600 mb-1">Título del Evento</label>
+              <input required type="text" placeholder="Ej. Taller de Arduino Básico" className="w-full p-2 border rounded-lg outline-none focus:ring-2 focus:ring-blue-500" value={nuevoEvento.titulo} onChange={e => setNuevoEvento({...nuevoEvento, titulo: e.target.value})} />
+            </div>
+            <div>
+              <label className="block text-xs font-bold text-gray-600 mb-1">Categoría</label>
+              <select className="w-full p-2 border rounded-lg outline-none focus:ring-2 focus:ring-blue-500 bg-white" value={nuevoEvento.categoria} onChange={e => setNuevoEvento({...nuevoEvento, categoria: e.target.value as any})}>
+                <option value="talleres">Taller</option>
+                <option value="conferencias">Conferencia</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs font-bold text-gray-600 mb-1">Expositor / Imparte</label>
+              <input required type="text" placeholder="Nombre del ponente" className="w-full p-2 border rounded-lg outline-none focus:ring-2 focus:ring-blue-500" value={nuevoEvento.expositor} onChange={e => setNuevoEvento({...nuevoEvento, expositor: e.target.value})} />
+            </div>
+            <div>
+              <label className="block text-xs font-bold text-gray-600 mb-1">Cupo Máximo</label>
+              <input required type="number" className="w-full p-2 border rounded-lg outline-none focus:ring-2 focus:ring-blue-500" value={nuevoEvento.cupo} onChange={e => setNuevoEvento({...nuevoEvento, cupo: e.target.value})} />
+            </div>
+            <div>
+              <label className="block text-xs font-bold text-gray-600 mb-1">Fecha</label>
+              <input required type="date" className="w-full p-2 border rounded-lg outline-none focus:ring-2 focus:ring-blue-500" value={nuevoEvento.fecha} onChange={e => setNuevoEvento({...nuevoEvento, fecha: e.target.value})} />
+            </div>
+            <div>
+              <label className="block text-xs font-bold text-gray-600 mb-1">Hora</label>
+              <input required type="text" placeholder="Ej. 11:00 AM" className="w-full p-2 border rounded-lg outline-none focus:ring-2 focus:ring-blue-500" value={nuevoEvento.hora} onChange={e => setNuevoEvento({...nuevoEvento, hora: e.target.value})} />
+            </div>
+          </div>
+          <div>
+            <label className="block text-xs font-bold text-gray-600 mb-1">Descripción corta</label>
+            <textarea required rows={3} placeholder="Detalles, requisitos o temario..." className="w-full p-2 border rounded-lg outline-none focus:ring-2 focus:ring-blue-500" value={nuevoEvento.descripcion} onChange={e => setNuevoEvento({...nuevoEvento, descripcion: e.target.value})}></textarea>
+          </div>
+          <button disabled={guardandoEvento} type="submit" className="bg-blue-900 text-white font-bold px-6 py-2 rounded-lg hover:bg-blue-800 transition disabled:opacity-50">
+            {guardandoEvento ? 'Publicando...' : 'Publicar Evento'}
+          </button>
+        </form>
+      )}
+
+      {/* MÓDULO 2: CREAR PUBLICACIÓN */}
+      {pestana === 'publicaciones' && (
+        <form onSubmit={handleCrearPublicacion} className="space-y-4 max-w-2xl">
+          <h3 className="text-xl font-bold text-gray-800">Nueva Publicación Cultural / Anuncio</h3>
+          <div>
+            <label className="block text-xs font-bold text-gray-600 mb-1">Título de la Noticia o Anuncio</label>
+            <input required type="text" placeholder="Ej. Convocatoria Torneo de Robótica" className="w-full p-2 border rounded-lg outline-none focus:ring-2 focus:ring-blue-500" value={nuevaPub.titulo} onChange={e => setNuevaPub({...nuevaPub, titulo: e.target.value})} />
+          </div>
+          <div>
+            <label className="block text-xs font-bold text-gray-600 mb-1">Contenido del Anuncio</label>
+            <textarea required rows={5} placeholder="Escribe el mensaje o información detallada..." className="w-full p-2 border rounded-lg outline-none focus:ring-2 focus:ring-blue-500" value={nuevaPub.contenido} onChange={e => setNuevaPub({...nuevaPub, contenido: e.target.value})}></textarea>
+          </div>
+          <button disabled={guardandoPub} type="submit" className="bg-blue-900 text-white font-bold px-6 py-2 rounded-lg hover:bg-blue-800 transition disabled:opacity-50">
+            {guardandoPub ? 'Publicando...' : 'Publicar Anuncio'}
+          </button>
+        </form>
+      )}
+
+      {/* MÓDULO 3: CONSULTAR ASISTENCIAS */}
+      {pestana === 'asistencias' && (
+        <div className="space-y-4">
+          <h3 className="text-xl font-bold text-gray-800">Alumnos Inscritos por Evento</h3>
+          
+          {misEventos.length === 0 ? (
+            <p className="text-gray-500">Aún no hay eventos registrados.</p>
+          ) : (
+            <>
+              <div className="max-w-md">
+                <label className="block text-xs font-bold text-gray-600 mb-1">Selecciona un Evento:</label>
+                <select className="w-full p-2 border rounded-lg bg-white outline-none focus:ring-2 focus:ring-blue-500 font-medium" value={eventoSeleccionadoId} onChange={e => setEventoSeleccionadoId(e.target.value)}>
+                  {misEventos.map(ev => (
+                    <option key={ev.id} value={ev.id}>{ev.titulo} ({ev.categoria})</option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="border rounded-lg overflow-hidden mt-4">
+                <table className="w-full text-left text-sm text-gray-600">
+                  <thead className="bg-gray-100 text-gray-800 uppercase text-xs">
+                    <tr>
+                      <th className="p-3">#</th>
+                      <th className="p-3">Nombre del Alumno</th>
+                      <th className="p-3">N. Control</th>
+                      <th className="p-3">Correo</th>
+                      <th className="p-3">Fecha Inscripción</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y">
+                    {cargandoLista ? (
+                      <tr><td colSpan={5} className="p-4 text-center">Cargando lista...</td></tr>
+                    ) : listaAlumnos.length === 0 ? (
+                      <tr><td colSpan={5} className="p-4 text-center text-gray-400">No hay alumnos inscritos en este evento todavía.</td></tr>
+                    ) : (
+                      listaAlumnos.map((al, index) => (
+                        <tr key={al.id} className="hover:bg-gray-50">
+                          <td className="p-3 font-bold">{index + 1}</td>
+                          <td className="p-3 font-medium text-gray-900">{al.nombreAlumno}</td>
+                          <td className="p-3">{al.controlAlumno}</td>
+                          <td className="p-3">{al.correoAlumno}</td>
+                          <td className="p-3 text-xs text-gray-400">{new Date(al.fechaRegistro).toLocaleDateString()}</td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </>
+          )}
+        </div>
+      )}
+    </div>
+  );
+};
+
+// --- PANEL MASTER ADMIN ---
 
 const PanelMaster = ({ onLogout }: { onLogout: () => void }) => {
   const [solicitudes, setSolicitudes] = useState<any[]>([]);
@@ -253,36 +613,8 @@ const PanelMaster = ({ onLogout }: { onLogout: () => void }) => {
   );
 };
 
-const PanelCoordinador = ({ usuario, puesto, onLogout }: { usuario: string; puesto?: string; onLogout: () => void }) => (
-  <div className="bg-white p-8 rounded-xl shadow-lg border border-gray-100 animate-fade-in space-y-6">
-    <div className="flex justify-between items-center border-b pb-4">
-      <div>
-        <h2 className="text-2xl font-bold text-blue-900">¡Bienvenido, {usuario}!</h2>
-        <p className="text-sm text-gray-500">Rol: <span className="font-semibold text-blue-700">{puesto}</span></p>
-      </div>
-      <button onClick={onLogout} className="bg-red-100 text-red-600 px-4 py-2 rounded-lg font-medium hover:bg-red-200 transition">
-        Cerrar Sesión
-      </button>
-    </div>
-
-    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-      <div className="p-5 bg-blue-50 rounded-xl border border-blue-100">
-        <h3 className="font-bold text-blue-900 mb-1">Gestión de Eventos</h3>
-        <p className="text-xs text-gray-600">Crea y coordina los nuevos talleres o conferencias a tu cargo.</p>
-      </div>
-      <div className="p-5 bg-green-50 rounded-xl border border-green-100">
-        <h3 className="font-bold text-green-900 mb-1">Asistencias y Listas</h3>
-        <p className="text-xs text-gray-600">Consulta los alumnos inscritos a tus actividades.</p>
-      </div>
-      <div className="p-5 bg-purple-50 rounded-xl border border-purple-100">
-        <h3 className="font-bold text-purple-900 mb-1">Publicaciones</h3>
-        <p className="text-xs text-gray-600">Sube anuncios a la sección cultural o de conferencias.</p>
-      </div>
-    </div>
-  </div>
-);
-
 // --- APLICACIÓN PRINCIPAL ---
+
 export default function App() {
   const [vistaActual, setVistaActual] = useState('inicio');
   const [sesion, setSesion] = useState<{ activa: boolean; isMaster: boolean; nombre: string; puesto?: string }>({
@@ -297,11 +629,11 @@ export default function App() {
         <div className="max-w-6xl mx-auto px-4 flex justify-between items-center py-4 overflow-x-auto">
           <div className="font-black text-xl text-blue-900 cursor-pointer flex-shrink-0 mr-6" onClick={() => setVistaActual('inicio')}>MecaCore</div>
           <div className="flex space-x-1 md:space-x-4 min-w-max">
-            <button onClick={() => setVistaActual('inicio')} className={`px-3 py-2 rounded-lg text-sm font-medium transition ${vistaActual === 'inicio' ? 'bg-blue-50 text-blue-900' : 'text-gray-600 hover:bg-gray-100'}`}>Inicio</button>
-            <button onClick={() => setVistaActual('social')} className={`px-3 py-2 rounded-lg text-sm font-medium transition ${vistaActual === 'social' ? 'bg-blue-50 text-blue-900' : 'text-gray-600 hover:bg-gray-100'}`}>Social y Cultural</button>
-            <button onClick={() => setVistaActual('talleres')} className={`px-3 py-2 rounded-lg text-sm font-medium transition ${vistaActual === 'talleres' ? 'bg-blue-50 text-blue-900' : 'text-gray-600 hover:bg-gray-100'}`}>Talleres</button>
-            <button onClick={() => setVistaActual('conferencias')} className={`px-3 py-2 rounded-lg text-sm font-medium transition ${vistaActual === 'conferencias' ? 'bg-blue-50 text-blue-900' : 'text-gray-600 hover:bg-gray-100'}`}>Conferencias</button>
-            <button onClick={() => setVistaActual('admin')} className={`px-3 py-2 rounded-lg text-sm font-medium transition ${vistaActual === 'admin' ? 'bg-blue-900 text-white' : 'text-blue-900 bg-blue-50 hover:bg-blue-100'}`}>
+            <button onClick={() => setVistaActual('inicio')} className={`px-3 py-2 rounded-lg text-sm font-medium transition ${vistaActual === 'inicio' ? 'bg-blue-50 text-blue-900 font-bold' : 'text-gray-600 hover:bg-gray-100'}`}>Inicio</button>
+            <button onClick={() => setVistaActual('social')} className={`px-3 py-2 rounded-lg text-sm font-medium transition ${vistaActual === 'social' ? 'bg-blue-50 text-blue-900 font-bold' : 'text-gray-600 hover:bg-gray-100'}`}>Social y Cultural</button>
+            <button onClick={() => setVistaActual('talleres')} className={`px-3 py-2 rounded-lg text-sm font-medium transition ${vistaActual === 'talleres' ? 'bg-blue-50 text-blue-900 font-bold' : 'text-gray-600 hover:bg-gray-100'}`}>Talleres</button>
+            <button onClick={() => setVistaActual('conferencias')} className={`px-3 py-2 rounded-lg text-sm font-medium transition ${vistaActual === 'conferencias' ? 'bg-blue-50 text-blue-900 font-bold' : 'text-gray-600 hover:bg-gray-100'}`}>Conferencias</button>
+            <button onClick={() => setVistaActual('admin')} className={`px-3 py-2 rounded-lg text-sm font-medium transition ${vistaActual === 'admin' ? 'bg-blue-900 text-white font-bold' : 'text-blue-900 bg-blue-50 hover:bg-blue-100'}`}>
               {sesion.activa ? (sesion.isMaster ? 'Panel Master' : 'Mi Panel') : 'Acceso'}
             </button>
           </div>
@@ -310,9 +642,9 @@ export default function App() {
 
       <main className="max-w-6xl mx-auto px-4 py-8">
         {vistaActual === 'inicio' && <Inicio />}
-        {vistaActual === 'social' && <EnConstruccion titulo="Área Social y Cultural" />}
-        {vistaActual === 'talleres' && <EnConstruccion titulo="Talleres" />}
-        {vistaActual === 'conferencias' && <EnConstruccion titulo="Conferencias" />}
+        {vistaActual === 'social' && <VistaPublicaciones />}
+        {vistaActual === 'talleres' && <VistaEventosPublicos categoria="talleres" />}
+        {vistaActual === 'conferencias' && <VistaEventosPublicos categoria="conferencias" />}
         {vistaActual === 'admin' && (
           sesion.activa ? (
             sesion.isMaster ? (
