@@ -6,6 +6,7 @@ import {
   addDoc, 
   getDocs, 
   updateDoc, 
+  deleteDoc,
   doc, 
   query, 
   where 
@@ -23,6 +24,36 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
+
+// --- COMPONENTE FOOTER / PIE DE PÁGINA ---
+const Footer = () => (
+  <footer className="bg-blue-950 text-white mt-16 border-t border-blue-900">
+    <div className="max-w-6xl mx-auto px-4 py-8 grid grid-cols-1 md:grid-cols-3 gap-8 text-sm">
+      <div>
+        <h4 className="font-black text-lg text-blue-400 mb-2">Comité MecaCore</h4>
+        <p className="text-gray-300 text-xs leading-relaxed">
+          Comité estudiantil de la carrera de Ingeniería Mecatrónica en el Instituto Tecnológico de Hermosillo. Impulsando la innovación y la tecnología.
+        </p>
+      </div>
+      <div>
+        <h4 className="font-bold text-white mb-2">Enlaces Rápidos</h4>
+        <ul className="space-y-1 text-xs text-gray-300">
+          <li>• Talleres de Capacitación</li>
+          <li>• Conferencias Magistrales</li>
+          <li>• Actividades Culturales y Deportivas</li>
+        </ul>
+      </div>
+      <div>
+        <h4 className="font-bold text-white mb-2">Contacto</h4>
+        <p className="text-xs text-gray-300">📍 Instituto Tecnológico de Hermosillo (ITH)</p>
+        <p className="text-xs text-gray-300">✉️ mecacore.ith@gmail.com</p>
+      </div>
+    </div>
+    <div className="bg-blue-900/50 py-3 text-center text-xs text-gray-400 border-t border-blue-900/40">
+      © {new Date().getFullYear()} MecaCore — Todos los derechos reservados.
+    </div>
+  </footer>
+);
 
 // --- MODAL DE INSCRIPCIÓN PARA ESTUDIANTES ---
 const ModalInscripcion = ({ evento, onClose }: { evento: any; onClose: () => void }) => {
@@ -84,23 +115,32 @@ const ModalInscripcion = ({ evento, onClose }: { evento: any; onClose: () => voi
 
 const Inicio = () => (
   <div className="space-y-8 animate-fade-in">
-    <div className="bg-blue-900 text-white p-10 rounded-2xl shadow-xl text-center">
-      <h1 className="text-4xl font-bold mb-4">Comité MecaCore</h1>
-      <p className="text-lg opacity-90">Innovación, Tecnología y Desarrollo en Mecatrónica</p>
+    <div className="bg-gradient-to-r from-blue-900 to-indigo-900 text-white p-10 rounded-2xl shadow-xl text-center relative overflow-hidden">
+      <h1 className="text-4xl font-extrabold mb-3">Comité MecaCore</h1>
+      <p className="text-lg opacity-90 max-w-2xl mx-auto">Innovación, Tecnología y Desarrollo en Ingeniería Mecatrónica</p>
     </div>
     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
       <div className="bg-white p-6 rounded-xl shadow-md border border-gray-100">
         <h2 className="text-2xl font-bold mb-4 text-blue-900">Bienvenido a la Plataforma</h2>
-        <p className="text-gray-600 leading-relaxed">
-          Consulta y participa en todas las actividades organizadas por el comité de Mecatrónica. Regístrate a talleres, asiste a conferencias y entérate de las últimas noticias del área social y cultural.
+        <p className="text-gray-600 leading-relaxed text-sm">
+          Consulta y participa en todas las actividades organizadas por el comité. Regístrate a talleres de electrónica, programación y diseño, asiste a conferencias y mantente al día con los eventos culturales.
         </p>
       </div>
       <div className="bg-white p-6 rounded-xl shadow-md border border-gray-100">
         <h2 className="text-2xl font-bold mb-4 text-blue-900">Accesos Rápidos</h2>
-        <ul className="space-y-3">
-          <li className="p-3 bg-blue-50 rounded-lg text-blue-900 font-medium">✨ Explora las próximas conferencias</li>
-          <li className="p-3 bg-green-50 rounded-lg text-green-900 font-medium">🛠️ Inscríbete a los talleres prácticos</li>
-          <li className="p-3 bg-purple-50 rounded-lg text-purple-900 font-medium">📰 Mantente informado en la sección Cultural</li>
+        <ul className="space-y-3 text-sm">
+          <li className="p-3 bg-blue-50 rounded-lg text-blue-900 font-medium flex items-center justify-between">
+            <span>✨ Explora las próximas conferencias</span>
+            <span className="text-xs bg-blue-200 px-2 py-0.5 rounded font-bold">Ver</span>
+          </li>
+          <li className="p-3 bg-green-50 rounded-lg text-green-900 font-medium flex items-center justify-between">
+            <span>🛠️ Inscríbete a los talleres prácticos</span>
+            <span className="text-xs bg-green-200 px-2 py-0.5 rounded font-bold">Ver</span>
+          </li>
+          <li className="p-3 bg-purple-50 rounded-lg text-purple-900 font-medium flex items-center justify-between">
+            <span>📰 Noticas en la sección Cultural</span>
+            <span className="text-xs bg-purple-200 px-2 py-0.5 rounded font-bold">Ver</span>
+          </li>
         </ul>
       </div>
     </div>
@@ -280,7 +320,7 @@ const LoginAdmin = ({ onLogin }: { onLogin: (usuarioInfo: { isMaster: boolean; n
       if (usuarioEncontrado) {
         const data = usuarioEncontrado.data();
         if (data.estado === 'denegado') {
-          setError('⚠️️ Tu acceso ha sido revocado o denegado por el Master Admin.');
+          setError('⚠ Tu acceso ha sido revocado o denegado por el Master Admin.');
         } else if (data.estado === 'pendiente') {
           setError('⏳ Tu solicitud sigue pendiente de aprobación por el Master Admin.');
         } else {
@@ -326,20 +366,20 @@ const LoginAdmin = ({ onLogin }: { onLogin: (usuarioInfo: { isMaster: boolean; n
 const PanelCoordinador = ({ usuario, puesto, permisos, onLogout }: { usuario: string; puesto?: string; permisos?: any; onLogout: () => void }) => {
   const userPermisos = permisos || { eventos: true, publicaciones: true, asistencias: true };
   
-  // Seleccionar primera pestaña disponible
   const pestanaInicial = userPermisos.eventos ? 'eventos' : userPermisos.publicaciones ? 'publicaciones' : userPermisos.asistencias ? 'asistencias' : 'ninguna';
   const [pestana, setPestana] = useState<'eventos' | 'publicaciones' | 'asistencias' | 'ninguna'>(pestanaInicial);
 
   // Form Eventos
   const [nuevoEvento, setNuevoEvento] = useState({ titulo: '', categoria: 'talleres', expositor: '', fecha: '', hora: '', cupo: '30', descripcion: '' });
   const [guardandoEvento, setGuardandoEvento] = useState(false);
+  const [misEventos, setMisEventos] = useState<any[]>([]);
 
-  // Form Publicaciones
+  // Publicaciones
   const [nuevaPub, setNuevaPub] = useState({ titulo: '', contenido: '' });
   const [guardandoPub, setGuardandoPub] = useState(false);
+  const [misPublicaciones, setMisPublicaciones] = useState<any[]>([]);
 
   // Asistencias
-  const [misEventos, setMisEventos] = useState<any[]>([]);
   const [eventoSeleccionadoId, setEventoSeleccionadoId] = useState('');
   const [listaAlumnos, setListaAlumnos] = useState<any[]>([]);
   const [cargandoLista, setCargandoLista] = useState(false);
@@ -357,9 +397,19 @@ const PanelCoordinador = ({ usuario, puesto, permisos, onLogout }: { usuario: st
     }
   };
 
+  const cargarPublicaciones = async () => {
+    try {
+      const snap = await getDocs(collection(db, "publicaciones"));
+      setMisPublicaciones(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
   useEffect(() => {
-    if (userPermisos.asistencias) cargarEventos();
-  }, [userPermisos.asistencias]);
+    cargarEventos();
+    cargarPublicaciones();
+  }, []);
 
   useEffect(() => {
     if (!eventoSeleccionadoId) return;
@@ -396,6 +446,13 @@ const PanelCoordinador = ({ usuario, puesto, permisos, onLogout }: { usuario: st
     setGuardandoEvento(false);
   };
 
+  const eliminarEvento = async (id: string) => {
+    if (confirm("¿Estás seguro de que deseas eliminar este evento?")) {
+      await deleteDoc(doc(db, "eventos", id));
+      cargarEventos();
+    }
+  };
+
   const handleCrearPublicacion = async (e: React.FormEvent) => {
     e.preventDefault();
     setGuardandoPub(true);
@@ -407,10 +464,46 @@ const PanelCoordinador = ({ usuario, puesto, permisos, onLogout }: { usuario: st
       });
       alert("¡Anuncio publicado en la sección Social y Cultural!");
       setNuevaPub({ titulo: '', contenido: '' });
+      cargarPublicaciones();
     } catch (err) {
       alert("Error al crear la publicación.");
     }
     setGuardandoPub(false);
+  };
+
+  const eliminarPublicacion = async (id: string) => {
+    if (confirm("¿Deseas eliminar esta publicación?")) {
+      await deleteDoc(doc(db, "publicaciones", id));
+      cargarPublicaciones();
+    }
+  };
+
+  // FUNCIONALIDAD: EXPORTAR A EXCEL / CSV
+  const exportarCSV = () => {
+    if (!listaAlumnos.length) {
+      alert("No hay alumnos inscritos en este evento para exportar.");
+      return;
+    }
+    const eventoActual = misEventos.find(e => e.id === eventoSeleccionadoId);
+    const headers = ["No.", "Nombre del Alumno", "Numero de Control", "Correo Electrónico", "Fecha de Registro"];
+    
+    const rows = listaAlumnos.map((al, idx) => [
+      idx + 1,
+      `"${al.nombreAlumno || ''}"`,
+      `"${al.controlAlumno || ''}"`,
+      `"${al.correoAlumno || ''}"`,
+      `"${new Date(al.fechaRegistro).toLocaleDateString()}"`
+    ]);
+
+    const csvContent = "\uFEFF" + [headers.join(","), ...rows.map(r => r.join(","))].join("\n");
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    link.setAttribute("download", `Asistencia_${(eventoActual?.titulo || 'Evento').replace(/\s+/g, '_')}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   };
 
   return (
@@ -425,7 +518,6 @@ const PanelCoordinador = ({ usuario, puesto, permisos, onLogout }: { usuario: st
         </button>
       </div>
 
-      {/* Menú de Sub-secciones según Permisos */}
       <div className="flex flex-wrap gap-2 border-b pb-3">
         {userPermisos.eventos && (
           <button onClick={() => setPestana('eventos')} className={`px-4 py-2 rounded-lg text-sm font-bold transition ${pestana === 'eventos' ? 'bg-blue-900 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>
@@ -451,85 +543,135 @@ const PanelCoordinador = ({ usuario, puesto, permisos, onLogout }: { usuario: st
         </div>
       )}
 
-      {/* MÓDULO 1: CREAR EVENTO */}
+      {/* MÓDULO 1: CREAR Y GESTIONAR EVENTOS */}
       {pestana === 'eventos' && userPermisos.eventos && (
-        <form onSubmit={handleCrearEvento} className="space-y-4 max-w-2xl">
-          <h3 className="text-xl font-bold text-gray-800">Crear Nuevo Taller o Conferencia</h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-xs font-bold text-gray-600 mb-1">Título del Evento</label>
-              <input required type="text" placeholder="Ej. Taller de Arduino Básico" className="w-full p-2 border rounded-lg outline-none focus:ring-2 focus:ring-blue-500" value={nuevoEvento.titulo} onChange={e => setNuevoEvento({...nuevoEvento, titulo: e.target.value})} />
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          <form onSubmit={handleCrearEvento} className="space-y-4">
+            <h3 className="text-xl font-bold text-gray-800">Crear Taller o Conferencia</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs font-bold text-gray-600 mb-1">Título</label>
+                <input required type="text" placeholder="Ej. Taller Arduino" className="w-full p-2 border rounded-lg outline-none focus:ring-2 focus:ring-blue-500 text-sm" value={nuevoEvento.titulo} onChange={e => setNuevoEvento({...nuevoEvento, titulo: e.target.value})} />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-gray-600 mb-1">Categoría</label>
+                <select className="w-full p-2 border rounded-lg outline-none focus:ring-2 focus:ring-blue-500 bg-white text-sm" value={nuevoEvento.categoria} onChange={e => setNuevoEvento({...nuevoEvento, categoria: e.target.value as any})}>
+                  <option value="talleres">Taller</option>
+                  <option value="conferencias">Conferencia</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-gray-600 mb-1">Expositor</label>
+                <input required type="text" placeholder="Ponente" className="w-full p-2 border rounded-lg outline-none focus:ring-2 focus:ring-blue-500 text-sm" value={nuevoEvento.expositor} onChange={e => setNuevoEvento({...nuevoEvento, expositor: e.target.value})} />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-gray-600 mb-1">Cupo</label>
+                <input required type="number" className="w-full p-2 border rounded-lg outline-none focus:ring-2 focus:ring-blue-500 text-sm" value={nuevoEvento.cupo} onChange={e => setNuevoEvento({...nuevoEvento, cupo: e.target.value})} />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-gray-600 mb-1">Fecha</label>
+                <input required type="date" className="w-full p-2 border rounded-lg outline-none focus:ring-2 focus:ring-blue-500 text-sm" value={nuevoEvento.fecha} onChange={e => setNuevoEvento({...nuevoEvento, fecha: e.target.value})} />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-gray-600 mb-1">Hora</label>
+                <input required type="text" placeholder="Ej. 11:00 AM" className="w-full p-2 border rounded-lg outline-none focus:ring-2 focus:ring-blue-500 text-sm" value={nuevoEvento.hora} onChange={e => setNuevoEvento({...nuevoEvento, hora: e.target.value})} />
+              </div>
             </div>
             <div>
-              <label className="block text-xs font-bold text-gray-600 mb-1">Categoría</label>
-              <select className="w-full p-2 border rounded-lg outline-none focus:ring-2 focus:ring-blue-500 bg-white" value={nuevoEvento.categoria} onChange={e => setNuevoEvento({...nuevoEvento, categoria: e.target.value as any})}>
-                <option value="talleres">Taller</option>
-                <option value="conferencias">Conferencia</option>
-              </select>
+              <label className="block text-xs font-bold text-gray-600 mb-1">Descripción</label>
+              <textarea required rows={3} placeholder="Detalles o requisitos..." className="w-full p-2 border rounded-lg outline-none focus:ring-2 focus:ring-blue-500 text-sm" value={nuevoEvento.descripcion} onChange={e => setNuevoEvento({...nuevoEvento, descripcion: e.target.value})}></textarea>
             </div>
-            <div>
-              <label className="block text-xs font-bold text-gray-600 mb-1">Expositor / Imparte</label>
-              <input required type="text" placeholder="Nombre del ponente" className="w-full p-2 border rounded-lg outline-none focus:ring-2 focus:ring-blue-500" value={nuevoEvento.expositor} onChange={e => setNuevoEvento({...nuevoEvento, expositor: e.target.value})} />
-            </div>
-            <div>
-              <label className="block text-xs font-bold text-gray-600 mb-1">Cupo Máximo</label>
-              <input required type="number" className="w-full p-2 border rounded-lg outline-none focus:ring-2 focus:ring-blue-500" value={nuevoEvento.cupo} onChange={e => setNuevoEvento({...nuevoEvento, cupo: e.target.value})} />
-            </div>
-            <div>
-              <label className="block text-xs font-bold text-gray-600 mb-1">Fecha</label>
-              <input required type="date" className="w-full p-2 border rounded-lg outline-none focus:ring-2 focus:ring-blue-500" value={nuevoEvento.fecha} onChange={e => setNuevoEvento({...nuevoEvento, fecha: e.target.value})} />
-            </div>
-            <div>
-              <label className="block text-xs font-bold text-gray-600 mb-1">Hora</label>
-              <input required type="text" placeholder="Ej. 11:00 AM" className="w-full p-2 border rounded-lg outline-none focus:ring-2 focus:ring-blue-500" value={nuevoEvento.hora} onChange={e => setNuevoEvento({...nuevoEvento, hora: e.target.value})} />
+            <button disabled={guardandoEvento} type="submit" className="w-full bg-blue-900 text-white font-bold py-2 rounded-lg hover:bg-blue-800 transition disabled:opacity-50">
+              {guardandoEvento ? 'Publicando...' : 'Publicar Evento'}
+            </button>
+          </form>
+
+          {/* LISTA Y ELIMINACIÓN DE EVENTOS EXISTENTES */}
+          <div className="space-y-3 border-l pl-0 lg:pl-6">
+            <h3 className="text-xl font-bold text-gray-800 mb-2">Eventos Publicados ({misEventos.length})</h3>
+            <div className="space-y-3 max-h-96 overflow-y-auto pr-1">
+              {misEventos.length === 0 ? <p className="text-sm text-gray-400">No se han registrado eventos.</p> : null}
+              {misEventos.map(ev => (
+                <div key={ev.id} className="p-3 border rounded-lg bg-gray-50 flex justify-between items-center text-xs">
+                  <div>
+                    <span className="font-bold text-blue-900">{ev.titulo}</span> <span className="text-gray-400">({ev.categoria})</span>
+                    <p className="text-gray-500">{ev.fecha} - {ev.hora} | Cupo: {ev.cupo}</p>
+                  </div>
+                  <button onClick={() => eliminarEvento(ev.id)} className="bg-red-100 text-red-600 px-2.5 py-1 rounded font-bold hover:bg-red-200 transition">
+                    Eliminar
+                  </button>
+                </div>
+              ))}
             </div>
           </div>
-          <div>
-            <label className="block text-xs font-bold text-gray-600 mb-1">Descripción corta</label>
-            <textarea required rows={3} placeholder="Detalles, requisitos o temario..." className="w-full p-2 border rounded-lg outline-none focus:ring-2 focus:ring-blue-500" value={nuevoEvento.descripcion} onChange={e => setNuevoEvento({...nuevoEvento, descripcion: e.target.value})}></textarea>
-          </div>
-          <button disabled={guardandoEvento} type="submit" className="bg-blue-900 text-white font-bold px-6 py-2 rounded-lg hover:bg-blue-800 transition disabled:opacity-50">
-            {guardandoEvento ? 'Publicando...' : 'Publicar Evento'}
-          </button>
-        </form>
+        </div>
       )}
 
-      {/* MÓDULO 2: CREAR PUBLICACIÓN */}
+      {/* MÓDULO 2: CREAR Y GESTIONAR PUBLICACIONES */}
       {pestana === 'publicaciones' && userPermisos.publicaciones && (
-        <form onSubmit={handleCrearPublicacion} className="space-y-4 max-w-2xl">
-          <h3 className="text-xl font-bold text-gray-800">Nueva Publicación Cultural / Anuncio</h3>
-          <div>
-            <label className="block text-xs font-bold text-gray-600 mb-1">Título de la Noticia o Anuncio</label>
-            <input required type="text" placeholder="Ej. Convocatoria Torneo de Robótica" className="w-full p-2 border rounded-lg outline-none focus:ring-2 focus:ring-blue-500" value={nuevaPub.titulo} onChange={e => setNuevaPub({...nuevaPub, titulo: e.target.value})} />
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          <form onSubmit={handleCrearPublicacion} className="space-y-4">
+            <h3 className="text-xl font-bold text-gray-800">Publicar Anuncio</h3>
+            <div>
+              <label className="block text-xs font-bold text-gray-600 mb-1">Título del Anuncio</label>
+              <input required type="text" placeholder="Ej. Convocatoria Torneo Robótica" className="w-full p-2 border rounded-lg outline-none focus:ring-2 focus:ring-blue-500 text-sm" value={nuevaPub.titulo} onChange={e => setNuevaPub({...nuevaPub, titulo: e.target.value})} />
+            </div>
+            <div>
+              <label className="block text-xs font-bold text-gray-600 mb-1">Contenido del Anuncio</label>
+              <textarea required rows={5} placeholder="Escribe el mensaje detallado..." className="w-full p-2 border rounded-lg outline-none focus:ring-2 focus:ring-blue-500 text-sm" value={nuevaPub.contenido} onChange={e => setNuevaPub({...nuevaPub, contenido: e.target.value})}></textarea>
+            </div>
+            <button disabled={guardandoPub} type="submit" className="w-full bg-blue-900 text-white font-bold py-2 rounded-lg hover:bg-blue-800 transition disabled:opacity-50">
+              {guardandoPub ? 'Publicando...' : 'Publicar Anuncio'}
+            </button>
+          </form>
+
+          {/* LISTA Y ELIMINACIÓN DE PUBLICACIONES */}
+          <div className="space-y-3 border-l pl-0 lg:pl-6">
+            <h3 className="text-xl font-bold text-gray-800 mb-2">Anuncios Activos ({misPublicaciones.length})</h3>
+            <div className="space-y-3 max-h-96 overflow-y-auto pr-1">
+              {misPublicaciones.length === 0 ? <p className="text-sm text-gray-400">No hay publicaciones registradas.</p> : null}
+              {misPublicaciones.map(pub => (
+                <div key={pub.id} className="p-3 border rounded-lg bg-gray-50 flex justify-between items-center text-xs">
+                  <div>
+                    <p className="font-bold text-purple-900">{pub.titulo}</p>
+                    <p className="text-gray-500 line-clamp-1">{pub.contenido}</p>
+                  </div>
+                  <button onClick={() => eliminarPublicacion(pub.id)} className="bg-red-100 text-red-600 px-2.5 py-1 rounded font-bold hover:bg-red-200 transition">
+                    Eliminar
+                  </button>
+                </div>
+              ))}
+            </div>
           </div>
-          <div>
-            <label className="block text-xs font-bold text-gray-600 mb-1">Contenido del Anuncio</label>
-            <textarea required rows={5} placeholder="Escribe el mensaje o información detallada..." className="w-full p-2 border rounded-lg outline-none focus:ring-2 focus:ring-blue-500" value={nuevaPub.contenido} onChange={e => setNuevaPub({...nuevaPub, contenido: e.target.value})}></textarea>
-          </div>
-          <button disabled={guardandoPub} type="submit" className="bg-blue-900 text-white font-bold px-6 py-2 rounded-lg hover:bg-blue-800 transition disabled:opacity-50">
-            {guardandoPub ? 'Publicando...' : 'Publicar Anuncio'}
-          </button>
-        </form>
+        </div>
       )}
 
-      {/* MÓDULO 3: CONSULTAR ASISTENCIAS */}
+      {/* MÓDULO 3: CONSULTAR ASISTENCIAS Y EXPORTAR A EXCEL */}
       {pestana === 'asistencias' && userPermisos.asistencias && (
         <div className="space-y-4">
-          <h3 className="text-xl font-bold text-gray-800">Alumnos Inscritos por Evento</h3>
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+            <h3 className="text-xl font-bold text-gray-800">Alumnos Inscritos por Evento</h3>
+            {listaAlumnos.length > 0 && (
+              <button onClick={exportarCSV} className="bg-green-700 text-white px-4 py-2 rounded-lg text-xs font-bold hover:bg-green-800 transition flex items-center gap-1.5 shadow">
+                📊 Exportar Lista a Excel (CSV)
+              </button>
+            )}
+          </div>
+          
           {misEventos.length === 0 ? (
             <p className="text-gray-500">Aún no hay eventos registrados.</p>
           ) : (
             <>
               <div className="max-w-md">
                 <label className="block text-xs font-bold text-gray-600 mb-1">Selecciona un Evento:</label>
-                <select className="w-full p-2 border rounded-lg bg-white outline-none focus:ring-2 focus:ring-blue-500 font-medium" value={eventoSeleccionadoId} onChange={e => setEventoSeleccionadoId(e.target.value)}>
+                <select className="w-full p-2 border rounded-lg bg-white outline-none focus:ring-2 focus:ring-blue-500 font-medium text-sm" value={eventoSeleccionadoId} onChange={e => setEventoSeleccionadoId(e.target.value)}>
                   {misEventos.map(ev => (
                     <option key={ev.id} value={ev.id}>{ev.titulo} ({ev.categoria})</option>
                   ))}
                 </select>
               </div>
 
-              <div className="border rounded-lg overflow-hidden mt-4">
+              <div className="border rounded-lg overflow-hidden mt-4 shadow-sm">
                 <table className="w-full text-left text-sm text-gray-600">
                   <thead className="bg-gray-100 text-gray-800 uppercase text-xs">
                     <tr>
@@ -615,6 +757,13 @@ const PanelMaster = ({ onLogout }: { onLogout: () => void }) => {
     cargarSolicitudes();
   };
 
+  const eliminarRegistro = async (id: string) => {
+    if (confirm("¿Estás seguro de eliminar permanentemente a este usuario/solicitud?")) {
+      await deleteDoc(doc(db, "solicitudes_admin", id));
+      cargarSolicitudes();
+    }
+  };
+
   return (
     <div className="bg-white p-8 rounded-xl shadow-lg border border-gray-100 animate-fade-in">
       <div className="flex justify-between items-center mb-6">
@@ -669,6 +818,10 @@ const PanelMaster = ({ onLogout }: { onLogout: () => void }) => {
                       🔄 Reaprobar Acceso
                     </button>
                   )}
+
+                  <button onClick={() => eliminarRegistro(sol.id)} className="bg-gray-200 text-gray-700 px-2.5 py-1.5 rounded-lg text-xs font-bold hover:bg-gray-300 transition" title="Eliminar registro">
+                    🗑️
+                  </button>
                 </div>
               </div>
 
@@ -719,39 +872,43 @@ export default function App() {
   });
 
   return (
-    <div className="min-h-screen bg-gray-50 font-sans text-gray-800">
-      <nav className="bg-white shadow-md sticky top-0 z-50">
-        <div className="max-w-6xl mx-auto px-4 flex justify-between items-center py-4 overflow-x-auto">
-          <div className="font-black text-xl text-blue-900 cursor-pointer flex-shrink-0 mr-6" onClick={() => setVistaActual('inicio')}>MecaCore</div>
-          <div className="flex space-x-1 md:space-x-4 min-w-max">
-            <button onClick={() => setVistaActual('inicio')} className={`px-3 py-2 rounded-lg text-sm font-medium transition ${vistaActual === 'inicio' ? 'bg-blue-50 text-blue-900 font-bold' : 'text-gray-600 hover:bg-gray-100'}`}>Inicio</button>
-            <button onClick={() => setVistaActual('social')} className={`px-3 py-2 rounded-lg text-sm font-medium transition ${vistaActual === 'social' ? 'bg-blue-50 text-blue-900 font-bold' : 'text-gray-600 hover:bg-gray-100'}`}>Social y Cultural</button>
-            <button onClick={() => setVistaActual('talleres')} className={`px-3 py-2 rounded-lg text-sm font-medium transition ${vistaActual === 'talleres' ? 'bg-blue-50 text-blue-900 font-bold' : 'text-gray-600 hover:bg-gray-100'}`}>Talleres</button>
-            <button onClick={() => setVistaActual('conferencias')} className={`px-3 py-2 rounded-lg text-sm font-medium transition ${vistaActual === 'conferencias' ? 'bg-blue-50 text-blue-900 font-bold' : 'text-gray-600 hover:bg-gray-100'}`}>Conferencias</button>
-            <button onClick={() => setVistaActual('admin')} className={`px-3 py-2 rounded-lg text-sm font-medium transition ${vistaActual === 'admin' ? 'bg-blue-900 text-white font-bold' : 'text-blue-900 bg-blue-50 hover:bg-blue-100'}`}>
-              {sesion.activa ? (sesion.isMaster ? 'Panel Master' : 'Mi Panel') : 'Acceso'}
-            </button>
+    <div className="min-h-screen bg-gray-50 font-sans text-gray-800 flex flex-col justify-between">
+      <div>
+        <nav className="bg-white shadow-md sticky top-0 z-50">
+          <div className="max-w-6xl mx-auto px-4 flex justify-between items-center py-4 overflow-x-auto">
+            <div className="font-black text-xl text-blue-900 cursor-pointer flex-shrink-0 mr-6" onClick={() => setVistaActual('inicio')}>MecaCore</div>
+            <div className="flex space-x-1 md:space-x-4 min-w-max">
+              <button onClick={() => setVistaActual('inicio')} className={`px-3 py-2 rounded-lg text-sm font-medium transition ${vistaActual === 'inicio' ? 'bg-blue-50 text-blue-900 font-bold' : 'text-gray-600 hover:bg-gray-100'}`}>Inicio</button>
+              <button onClick={() => setVistaActual('social')} className={`px-3 py-2 rounded-lg text-sm font-medium transition ${vistaActual === 'social' ? 'bg-blue-50 text-blue-900 font-bold' : 'text-gray-600 hover:bg-gray-100'}`}>Social y Cultural</button>
+              <button onClick={() => setVistaActual('talleres')} className={`px-3 py-2 rounded-lg text-sm font-medium transition ${vistaActual === 'talleres' ? 'bg-blue-50 text-blue-900 font-bold' : 'text-gray-600 hover:bg-gray-100'}`}>Talleres</button>
+              <button onClick={() => setVistaActual('conferencias')} className={`px-3 py-2 rounded-lg text-sm font-medium transition ${vistaActual === 'conferencias' ? 'bg-blue-50 text-blue-900 font-bold' : 'text-gray-600 hover:bg-gray-100'}`}>Conferencias</button>
+              <button onClick={() => setVistaActual('admin')} className={`px-3 py-2 rounded-lg text-sm font-medium transition ${vistaActual === 'admin' ? 'bg-blue-900 text-white font-bold' : 'text-blue-900 bg-blue-50 hover:bg-blue-100'}`}>
+                {sesion.activa ? (sesion.isMaster ? 'Panel Master' : 'Mi Panel') : 'Acceso'}
+              </button>
+            </div>
           </div>
-        </div>
-      </nav>
+        </nav>
 
-      <main className="max-w-6xl mx-auto px-4 py-8">
-        {vistaActual === 'inicio' && <Inicio />}
-        {vistaActual === 'social' && <VistaPublicaciones />}
-        {vistaActual === 'talleres' && <VistaEventosPublicos categoria="talleres" />}
-        {vistaActual === 'conferencias' && <VistaEventosPublicos categoria="conferencias" />}
-        {vistaActual === 'admin' && (
-          sesion.activa ? (
-            sesion.isMaster ? (
-              <PanelMaster onLogout={() => setSesion({ activa: false, isMaster: false, nombre: '' })} />
+        <main className="max-w-6xl mx-auto px-4 py-8">
+          {vistaActual === 'inicio' && <Inicio />}
+          {vistaActual === 'social' && <VistaPublicaciones />}
+          {vistaActual === 'talleres' && <VistaEventosPublicos categoria="talleres" />}
+          {vistaActual === 'conferencias' && <VistaEventosPublicos categoria="conferencias" />}
+          {vistaActual === 'admin' && (
+            sesion.activa ? (
+              sesion.isMaster ? (
+                <PanelMaster onLogout={() => setSesion({ activa: false, isMaster: false, nombre: '' })} />
+              ) : (
+                <PanelCoordinador usuario={sesion.nombre} puesto={sesion.puesto} permisos={sesion.permisos} onLogout={() => setSesion({ activa: false, isMaster: false, nombre: '' })} />
+              )
             ) : (
-              <PanelCoordinador usuario={sesion.nombre} puesto={sesion.puesto} permisos={sesion.permisos} onLogout={() => setSesion({ activa: false, isMaster: false, nombre: '' })} />
+              <LoginAdmin onLogin={(info) => setSesion({ activa: true, ...info })} />
             )
-          ) : (
-            <LoginAdmin onLogin={(info) => setSesion({ activa: true, ...info })} />
-          )
-        )}
-      </main>
+          )}
+        </main>
+      </div>
+
+      <Footer />
     </div>
   );
 }
