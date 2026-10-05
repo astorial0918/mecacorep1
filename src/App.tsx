@@ -216,6 +216,7 @@ const FormularioSolicitud = ({ onVolver }: { onVolver: () => void }) => {
       await addDoc(collection(db, "solicitudes_admin"), {
         ...datos,
         estado: 'pendiente',
+        permisos: { eventos: true, publicaciones: true, asistencias: true },
         fecha: new Date().toISOString()
       });
       setMensaje('¡Solicitud enviada correctamente! Espera la aprobación del Master Admin.');
@@ -247,7 +248,7 @@ const FormularioSolicitud = ({ onVolver }: { onVolver: () => void }) => {
   );
 };
 
-const LoginAdmin = ({ onLogin }: { onLogin: (usuarioInfo: { isMaster: boolean; nombre: string; puesto?: string }) => void }) => {
+const LoginAdmin = ({ onLogin }: { onLogin: (usuarioInfo: { isMaster: boolean; nombre: string; puesto?: string; permisos?: any }) => void }) => {
   const [usuarioInput, setUsuarioInput] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -270,8 +271,7 @@ const LoginAdmin = ({ onLogin }: { onLogin: (usuarioInfo: { isMaster: boolean; n
       const querySnapshot = await getDocs(collection(db, "solicitudes_admin"));
       const usuarioEncontrado = querySnapshot.docs.find(doc => {
         const data = doc.data();
-        return data.estado === 'aprobado' && 
-          (data.usuarioGenerado?.toLowerCase() === inputLimpio || 
+        return (data.usuarioGenerado?.toLowerCase() === inputLimpio || 
            data.correoInst?.toLowerCase() === inputLimpio || 
            data.correoPers?.toLowerCase() === inputLimpio) &&
           data.passwordGenerada === password;
@@ -279,9 +279,20 @@ const LoginAdmin = ({ onLogin }: { onLogin: (usuarioInfo: { isMaster: boolean; n
 
       if (usuarioEncontrado) {
         const data = usuarioEncontrado.data();
-        onLogin({ isMaster: false, nombre: data.nombre, puesto: data.puesto });
+        if (data.estado === 'denegado') {
+          setError('⚠️️ Tu acceso ha sido revocado o denegado por el Master Admin.');
+        } else if (data.estado === 'pendiente') {
+          setError('⏳ Tu solicitud sigue pendiente de aprobación por el Master Admin.');
+        } else {
+          onLogin({ 
+            isMaster: false, 
+            nombre: data.nombre, 
+            puesto: data.puesto,
+            permisos: data.permisos || { eventos: true, publicaciones: true, asistencias: true }
+          });
+        }
       } else {
-        setError('Credenciales incorrectas o la solicitud aún no ha sido aprobada.');
+        setError('Credenciales incorrectas.');
       }
     } catch (err) {
       setError('Error al consultar la base de datos.');
@@ -294,7 +305,7 @@ const LoginAdmin = ({ onLogin }: { onLogin: (usuarioInfo: { isMaster: boolean; n
   return (
     <div className="max-w-md mx-auto bg-white p-8 rounded-xl shadow-lg border border-gray-100 mt-10 animate-fade-in">
       <h2 className="text-2xl font-bold text-center text-blue-900 mb-6">Acceso MecaCore</h2>
-      {error && <p className="text-red-500 text-sm mb-4 text-center">{error}</p>}
+      {error && <p className="text-red-500 text-sm mb-4 text-center font-medium bg-red-50 p-3 rounded-lg border border-red-100">{error}</p>}
       <form onSubmit={handleLogin} className="space-y-4">
         <input required type="text" placeholder="Usuario asignado o Correo" className="w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" value={usuarioInput} onChange={(e) => setUsuarioInput(e.target.value)} />
         <input required type="password" placeholder="Contraseña" className="w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" value={password} onChange={(e) => setPassword(e.target.value)} />
@@ -310,10 +321,14 @@ const LoginAdmin = ({ onLogin }: { onLogin: (usuarioInfo: { isMaster: boolean; n
   );
 };
 
-// --- PANEL DE CONTROL DEL COORDINADOR COMPLETO ---
+// --- PANEL DE CONTROL DEL COORDINADOR ---
 
-const PanelCoordinador = ({ usuario, puesto, onLogout }: { usuario: string; puesto?: string; onLogout: () => void }) => {
-  const [pestana, setPestana] = useState<'eventos' | 'publicaciones' | 'asistencias'>('eventos');
+const PanelCoordinador = ({ usuario, puesto, permisos, onLogout }: { usuario: string; puesto?: string; permisos?: any; onLogout: () => void }) => {
+  const userPermisos = permisos || { eventos: true, publicaciones: true, asistencias: true };
+  
+  // Seleccionar primera pestaña disponible
+  const pestanaInicial = userPermisos.eventos ? 'eventos' : userPermisos.publicaciones ? 'publicaciones' : userPermisos.asistencias ? 'asistencias' : 'ninguna';
+  const [pestana, setPestana] = useState<'eventos' | 'publicaciones' | 'asistencias' | 'ninguna'>(pestanaInicial);
 
   // Form Eventos
   const [nuevoEvento, setNuevoEvento] = useState({ titulo: '', categoria: 'talleres', expositor: '', fecha: '', hora: '', cupo: '30', descripcion: '' });
@@ -329,7 +344,6 @@ const PanelCoordinador = ({ usuario, puesto, onLogout }: { usuario: string; pues
   const [listaAlumnos, setListaAlumnos] = useState<any[]>([]);
   const [cargandoLista, setCargandoLista] = useState(false);
 
-  // Cargar eventos del coordinador
   const cargarEventos = async () => {
     try {
       const snap = await getDocs(collection(db, "eventos"));
@@ -344,10 +358,9 @@ const PanelCoordinador = ({ usuario, puesto, onLogout }: { usuario: string; pues
   };
 
   useEffect(() => {
-    cargarEventos();
-  }, []);
+    if (userPermisos.asistencias) cargarEventos();
+  }, [userPermisos.asistencias]);
 
-  // Cargar lista de asistentes cuando cambie el evento seleccionado
   useEffect(() => {
     if (!eventoSeleccionadoId) return;
     const cargarAsistentes = async () => {
@@ -412,21 +425,34 @@ const PanelCoordinador = ({ usuario, puesto, onLogout }: { usuario: string; pues
         </button>
       </div>
 
-      {/* Menú de Sub-secciones */}
-      <div className="flex space-x-2 border-b pb-3">
-        <button onClick={() => setPestana('eventos')} className={`px-4 py-2 rounded-lg text-sm font-bold transition ${pestana === 'eventos' ? 'bg-blue-900 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>
-          📅 Crear Eventos
-        </button>
-        <button onClick={() => setPestana('publicaciones')} className={`px-4 py-2 rounded-lg text-sm font-bold transition ${pestana === 'publicaciones' ? 'bg-blue-900 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>
-          📰 Publicar Anuncios
-        </button>
-        <button onClick={() => setPestana('asistencias')} className={`px-4 py-2 rounded-lg text-sm font-bold transition ${pestana === 'asistencias' ? 'bg-blue-900 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>
-          📋 Listas y Asistencias
-        </button>
+      {/* Menú de Sub-secciones según Permisos */}
+      <div className="flex flex-wrap gap-2 border-b pb-3">
+        {userPermisos.eventos && (
+          <button onClick={() => setPestana('eventos')} className={`px-4 py-2 rounded-lg text-sm font-bold transition ${pestana === 'eventos' ? 'bg-blue-900 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>
+            📅 Crear Eventos
+          </button>
+        )}
+        {userPermisos.publicaciones && (
+          <button onClick={() => setPestana('publicaciones')} className={`px-4 py-2 rounded-lg text-sm font-bold transition ${pestana === 'publicaciones' ? 'bg-blue-900 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>
+            📰 Publicar Anuncios
+          </button>
+        )}
+        {userPermisos.asistencias && (
+          <button onClick={() => setPestana('asistencias')} className={`px-4 py-2 rounded-lg text-sm font-bold transition ${pestana === 'asistencias' ? 'bg-blue-900 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>
+            📋 Listas y Asistencias
+          </button>
+        )}
       </div>
 
+      {pestana === 'ninguna' && (
+        <div className="text-center py-10 text-gray-500">
+          <p className="text-lg font-bold">Sin permisos asignados</p>
+          <p className="text-sm">Actualmente no tienes accesos habilitados. Solicítale al Master Admin que active tus permisos.</p>
+        </div>
+      )}
+
       {/* MÓDULO 1: CREAR EVENTO */}
-      {pestana === 'eventos' && (
+      {pestana === 'eventos' && userPermisos.eventos && (
         <form onSubmit={handleCrearEvento} className="space-y-4 max-w-2xl">
           <h3 className="text-xl font-bold text-gray-800">Crear Nuevo Taller o Conferencia</h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -469,7 +495,7 @@ const PanelCoordinador = ({ usuario, puesto, onLogout }: { usuario: string; pues
       )}
 
       {/* MÓDULO 2: CREAR PUBLICACIÓN */}
-      {pestana === 'publicaciones' && (
+      {pestana === 'publicaciones' && userPermisos.publicaciones && (
         <form onSubmit={handleCrearPublicacion} className="space-y-4 max-w-2xl">
           <h3 className="text-xl font-bold text-gray-800">Nueva Publicación Cultural / Anuncio</h3>
           <div>
@@ -487,10 +513,9 @@ const PanelCoordinador = ({ usuario, puesto, onLogout }: { usuario: string; pues
       )}
 
       {/* MÓDULO 3: CONSULTAR ASISTENCIAS */}
-      {pestana === 'asistencias' && (
+      {pestana === 'asistencias' && userPermisos.asistencias && (
         <div className="space-y-4">
           <h3 className="text-xl font-bold text-gray-800">Alumnos Inscritos por Evento</h3>
-          
           {misEventos.length === 0 ? (
             <p className="text-gray-500">Aún no hay eventos registrados.</p>
           ) : (
@@ -542,7 +567,7 @@ const PanelCoordinador = ({ usuario, puesto, onLogout }: { usuario: string; pues
   );
 };
 
-// --- PANEL MASTER ADMIN ---
+// --- PANEL MASTER ADMIN COMPLETO ---
 
 const PanelMaster = ({ onLogout }: { onLogout: () => void }) => {
   const [solicitudes, setSolicitudes] = useState<any[]>([]);
@@ -560,54 +585,124 @@ const PanelMaster = ({ onLogout }: { onLogout: () => void }) => {
     cargarSolicitudes();
   }, []);
 
-  const aprobarSolicitud = async (id: string, numeroControl: string, puesto: string) => {
-    const letras = 'abcdefghijklmnopqrstuvwxyz';
-    const l1 = letras[Math.floor(Math.random() * letras.length)];
-    const l2 = letras[Math.floor(Math.random() * letras.length)];
-    const pre = puesto.substring(0, 5).toLowerCase().replace(/\s+/g, '');
-    
-    const usuario = `p#${numeroControl}${l1}${l2}`;
-    const password = `${pre}#${numeroControl}${l1}${l2}`;
+  const cambiarEstado = async (id: string, nuevoEstado: 'aprobado' | 'denegado', sol?: any) => {
+    let updateData: any = { estado: nuevoEstado };
+
+    if (nuevoEstado === 'aprobado' && !sol?.usuarioGenerado) {
+      const letras = 'abcdefghijklmnopqrstuvwxyz';
+      const l1 = letras[Math.floor(Math.random() * letras.length)];
+      const l2 = letras[Math.floor(Math.random() * letras.length)];
+      const pre = (sol?.puesto || 'coord').substring(0, 5).toLowerCase().replace(/\s+/g, '');
+      
+      updateData.usuarioGenerado = `p#${sol?.numeroControl || '0000'}${l1}${l2}`;
+      updateData.passwordGenerada = `${pre}#${sol?.numeroControl || '0000'}${l1}${l2}`;
+      updateData.permisos = sol?.permisos || { eventos: true, publicaciones: true, asistencias: true };
+    }
+
+    await updateDoc(doc(db, "solicitudes_admin", id), updateData);
+    cargarSolicitudes();
+  };
+
+  const togglePermiso = async (id: string, permisoKey: string, valorActual: boolean, permisosPrevios: any) => {
+    const nuevosPermisos = {
+      ...(permisosPrevios || { eventos: true, publicaciones: true, asistencias: true }),
+      [permisoKey]: !valorActual
+    };
 
     await updateDoc(doc(db, "solicitudes_admin", id), {
-      estado: 'aprobado',
-      usuarioGenerado: usuario,
-      passwordGenerada: password
+      permisos: nuevosPermisos
     });
-    
-    alert(`¡Aprobado con éxito!\n\nDatos de acceso creados:\nUsuario: ${usuario}\nContraseña: ${password}`);
     cargarSolicitudes();
   };
 
   return (
     <div className="bg-white p-8 rounded-xl shadow-lg border border-gray-100 animate-fade-in">
       <div className="flex justify-between items-center mb-6">
-        <h2 className="text-2xl font-bold text-blue-900">Panel Master MecaCore</h2>
+        <div>
+          <h2 className="text-2xl font-bold text-blue-900">Panel Master MecaCore</h2>
+          <p className="text-xs text-gray-500">Gestión de Accesos y Permisos para Coordinadores</p>
+        </div>
         <button onClick={onLogout} className="bg-red-100 text-red-600 px-4 py-2 rounded-lg font-medium hover:bg-red-200 transition">Cerrar Sesión</button>
       </div>
       
       <h3 className="text-xl font-bold mb-4 text-gray-700">Solicitudes de Coordinadores</h3>
       <div className="space-y-4">
         {solicitudes.length === 0 ? <p className="text-gray-500">No hay solicitudes registradas aún.</p> : null}
-        {solicitudes.map((sol) => (
-          <div key={sol.id} className="p-4 border rounded-lg bg-gray-50 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-            <div>
-              <p className="font-bold text-blue-900">{sol.nombre} <span className="text-sm font-normal text-gray-500">({sol.puesto})</span></p>
-              <p className="text-sm text-gray-600">Control: {sol.numeroControl} | Institucional: {sol.correoInst}</p>
-              <p className="text-xs text-gray-500">Personal: {sol.correoPers} | Tel: {sol.telefono}</p>
+        {solicitudes.map((sol) => {
+          const permisos = sol.permisos || { eventos: true, publicaciones: true, asistencias: true };
+          
+          return (
+            <div key={sol.id} className="p-5 border rounded-xl bg-gray-50 flex flex-col gap-4">
+              <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-2">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <p className="font-bold text-blue-900 text-lg">{sol.nombre}</p>
+                    <span className={`text-xs px-2 py-0.5 rounded-full font-bold uppercase ${sol.estado === 'aprobado' ? 'bg-green-100 text-green-800' : sol.estado === 'denegado' ? 'bg-red-100 text-red-800' : 'bg-yellow-100 text-yellow-800'}`}>
+                      {sol.estado || 'pendiente'}
+                    </span>
+                  </div>
+                  <p className="text-sm text-gray-600">Puesto: <strong>{sol.puesto}</strong> | Control: {sol.numeroControl}</p>
+                  <p className="text-xs text-gray-500">Inst: {sol.correoInst} | Pers: {sol.correoPers} | Tel: {sol.telefono}</p>
+                </div>
+
+                {/* BOTONES DE ACCIÓN PRINCIPALES */}
+                <div className="flex flex-wrap gap-2">
+                  {sol.estado === 'pendiente' && (
+                    <>
+                      <button onClick={() => cambiarEstado(sol.id, 'aprobado', sol)} className="bg-green-600 text-white px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-green-700 transition">
+                        ✓ Aprobar Acceso
+                      </button>
+                      <button onClick={() => cambiarEstado(sol.id, 'denegado')} className="bg-red-600 text-white px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-red-700 transition">
+                        ✕ Denegar
+                      </button>
+                    </>
+                  )}
+
+                  {sol.estado === 'aprobado' && (
+                    <button onClick={() => cambiarEstado(sol.id, 'denegado')} className="bg-red-100 text-red-700 border border-red-200 px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-red-200 transition">
+                      🚫 Revocar Acceso
+                    </button>
+                  )}
+
+                  {sol.estado === 'denegado' && (
+                    <button onClick={() => cambiarEstado(sol.id, 'aprobado', sol)} className="bg-blue-600 text-white px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-blue-700 transition">
+                      🔄 Reaprobar Acceso
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {/* CREDENCIALES Y PERMISOS SI ESTÁ APROBADO */}
               {sol.estado === 'aprobado' && (
-                <div className="mt-2 p-2 bg-green-100 border border-green-200 rounded text-xs text-green-800 font-bold">
-                  ✓ Aprobado — Usuario: {sol.usuarioGenerado} | Contraseña: {sol.passwordGenerada}
+                <div className="pt-3 border-t grid grid-cols-1 md:grid-cols-2 gap-4 bg-white p-3 rounded-lg border">
+                  <div>
+                    <p className="text-xs font-bold text-gray-500 uppercase mb-1">Credenciales Generadas:</p>
+                    <p className="text-xs text-gray-800"><strong>Usuario:</strong> <code className="bg-gray-100 px-1 py-0.5 rounded text-blue-900">{sol.usuarioGenerado}</code></p>
+                    <p className="text-xs text-gray-800"><strong>Contraseña:</strong> <code className="bg-gray-100 px-1 py-0.5 rounded text-blue-900">{sol.passwordGenerada}</code></p>
+                  </div>
+
+                  <div>
+                    <p className="text-xs font-bold text-gray-500 uppercase mb-2">Permisos Habilitados:</p>
+                    <div className="flex flex-wrap gap-4 text-xs">
+                      <label className="flex items-center gap-1.5 cursor-pointer">
+                        <input type="checkbox" checked={permisos.eventos ?? true} onChange={() => togglePermiso(sol.id, 'eventos', permisos.eventos ?? true, permisos)} className="rounded text-blue-900 focus:ring-blue-500" />
+                        <span>📅 Eventos</span>
+                      </label>
+                      <label className="flex items-center gap-1.5 cursor-pointer">
+                        <input type="checkbox" checked={permisos.publicaciones ?? true} onChange={() => togglePermiso(sol.id, 'publicaciones', permisos.publicaciones ?? true, permisos)} className="rounded text-blue-900 focus:ring-blue-500" />
+                        <span>📰 Anuncios</span>
+                      </label>
+                      <label className="flex items-center gap-1.5 cursor-pointer">
+                        <input type="checkbox" checked={permisos.asistencias ?? true} onChange={() => togglePermiso(sol.id, 'asistencias', permisos.asistencias ?? true, permisos)} className="rounded text-blue-900 focus:ring-blue-500" />
+                        <span>📋 Asistencias</span>
+                      </label>
+                    </div>
+                  </div>
                 </div>
               )}
             </div>
-            {sol.estado === 'pendiente' && (
-              <button onClick={() => aprobarSolicitud(sol.id, sol.numeroControl, sol.puesto)} className="bg-green-600 text-white px-4 py-2 rounded-lg text-sm font-bold hover:bg-green-700 transition">
-                Aprobar y Generar Acceso
-              </button>
-            )}
-          </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );
@@ -617,7 +712,7 @@ const PanelMaster = ({ onLogout }: { onLogout: () => void }) => {
 
 export default function App() {
   const [vistaActual, setVistaActual] = useState('inicio');
-  const [sesion, setSesion] = useState<{ activa: boolean; isMaster: boolean; nombre: string; puesto?: string }>({
+  const [sesion, setSesion] = useState<{ activa: boolean; isMaster: boolean; nombre: string; puesto?: string; permisos?: any }>({
     activa: false,
     isMaster: false,
     nombre: ''
@@ -650,7 +745,7 @@ export default function App() {
             sesion.isMaster ? (
               <PanelMaster onLogout={() => setSesion({ activa: false, isMaster: false, nombre: '' })} />
             ) : (
-              <PanelCoordinador usuario={sesion.nombre} puesto={sesion.puesto} onLogout={() => setSesion({ activa: false, isMaster: false, nombre: '' })} />
+              <PanelCoordinador usuario={sesion.nombre} puesto={sesion.puesto} permisos={sesion.permisos} onLogout={() => setSesion({ activa: false, isMaster: false, nombre: '' })} />
             )
           ) : (
             <LoginAdmin onLogin={(info) => setSesion({ activa: true, ...info })} />
