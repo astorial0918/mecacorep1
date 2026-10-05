@@ -1,942 +1,436 @@
-import React, { useState, useEffect } from 'react';
-import { initializeApp } from 'firebase/app';
+import React, { useState } from 'react';
 import { 
-  getFirestore, 
-  collection, 
-  addDoc, 
-  getDocs, 
-  updateDoc, 
-  doc, 
-  query, 
-  where 
-} from 'firebase/firestore';
-
-// --- CONFIGURACIÓN DE FIREBASE ---
-const firebaseConfig = {
-  apiKey: "AIzaSyCjfX-kVz_jP0Pcs3xpuGzKK5sAKngk1Cc",
-  authDomain: "mecacore-de33d.firebaseapp.com",
-  projectId: "mecacore-de33d",
-  storageBucket: "mecacore-de33d.firebasestorage.app",
-  messagingSenderId: "97715166477",
-  appId: "1:97715166477:web:1e08511729c287ffc2e444"
-};
-
-const app = initializeApp(firebaseConfig);
-const db = getFirestore(app);
-
-// --- COMPONENTE FOOTER / PIE DE PÁGINA ---
-const Footer = () => (
-  <footer className="bg-zinc-950 text-zinc-300 mt-20 border-t border-zinc-800/80 relative overflow-hidden">
-    <div className="absolute -bottom-10 left-1/2 -translate-x-1/2 w-96 h-32 bg-cyan-500/10 rounded-full blur-3xl pointer-events-none"></div>
-    <div className="max-w-6xl mx-auto px-4 py-10 grid grid-cols-1 md:grid-cols-2 gap-8 text-sm relative z-10">
-      <div>
-        <h4 className="font-black text-xl bg-gradient-to-r from-cyan-400 via-fuchsia-400 to-pink-500 bg-clip-text text-transparent mb-3">
-          COMITÉ DE INGENIERÍA MECATRÓNICA
-        </h4>
-        <p className="text-zinc-400 text-xs leading-relaxed max-w-md">
-          Comité oficial de la carrera de Ingeniería Mecatrónica en el Instituto Tecnológico de Hermosillo. Impulsando la robótica, automatización y desarrollo tecnológico.
-        </p>
-      </div>
-      <div>
-        <h4 className="font-bold text-fuchsia-400 mb-3 tracking-wider text-xs uppercase">Contacto</h4>
-        <p className="text-xs text-zinc-400">📍 Instituto Tecnológico de Hermosillo (ITH)</p>
-        <p className="text-xs text-zinc-400">✉️ comite.mecatronica.ith@gmail.com</p>
-      </div>
-    </div>
-    <div className="bg-zinc-900/60 py-4 text-center text-xs text-zinc-500 border-t border-zinc-800/50">
-      © {new Date().getFullYear()} <span className="text-cyan-400 font-bold">Comité de Ingeniería Mecatrónica - ITH</span> — Todos los derechos reservados.
-    </div>
-  </footer>
-);
-
-// --- MODAL DE DIPLOMA / RECONOCIMIENTO IMPRIMIBLE ---
-const ModalDiploma = ({ datos, onClose }: { datos: { alumno: any; evento: any }; onClose: () => void }) => {
-  const { alumno, evento } = datos;
-
-  const handleImprimir = () => {
-    const printContent = document.getElementById('diploma-imprimible');
-    if (!printContent) return;
-    const ventana = window.open('', '', 'width=950,height=680');
-    if (!ventana) return;
-    ventana.document.write(`
-      <html>
-        <head>
-          <title>Diploma - ${alumno.nombreAlumno}</title>
-          <script src="https://cdn.tailwindcss.com"></script>
-          <style>
-            @media print {
-              @page { size: landscape; margin: 0; }
-              body { margin: 1cm; background: #fff !important; color: #000 !important; }
-            }
-          </style>
-        </head>
-        <body class="bg-white flex items-center justify-center min-h-screen">
-          ${printContent.innerHTML}
-          <script>
-            setTimeout(() => {
-              window.print();
-              window.close();
-            }, 500);
-          </script>
-        </body>
-      </html>
-    `);
-    ventana.document.close();
-  };
-
-  return (
-    <div className="fixed inset-0 bg-black/80 backdrop-blur-md flex items-center justify-center p-4 z-50 overflow-y-auto">
-      <div className="bg-zinc-900 border border-pink-500/40 rounded-2xl max-w-3xl w-full p-6 shadow-[0_0_30px_rgba(236,72,153,0.3)] relative text-zinc-100">
-        <button onClick={onClose} className="absolute top-4 right-4 text-zinc-400 hover:text-pink-400 font-bold text-xl transition">✕</button>
-        
-        <div className="flex justify-between items-center mb-6 border-b border-zinc-800 pb-4">
-          <h3 className="text-xl font-extrabold bg-gradient-to-r from-cyan-400 to-pink-500 bg-clip-text text-transparent">Reconocimiento Oficial</h3>
-          <button onClick={handleImprimir} className="bg-gradient-to-r from-cyan-500 to-blue-600 text-black font-extrabold px-4 py-2 rounded-lg text-xs hover:shadow-[0_0_15px_rgba(6,182,212,0.6)] transition flex items-center gap-2">
-            🖨️ Imprimir / Guardar PDF
-          </button>
-        </div>
-
-        <div id="diploma-imprimible" className="border-4 border-double border-pink-500/60 p-8 rounded-xl bg-zinc-950 text-center relative shadow-inner overflow-hidden">
-          <div className="absolute top-0 right-0 w-32 h-32 bg-pink-500/10 rounded-full blur-2xl pointer-events-none"></div>
-          <div className="absolute bottom-0 left-0 w-32 h-32 bg-cyan-500/10 rounded-full blur-2xl pointer-events-none"></div>
-
-          <div className="flex justify-between items-center mb-6 border-b border-cyan-500/30 pb-4">
-            <div className="text-left">
-              <h4 className="font-black text-cyan-400 text-lg tracking-wider">COMITÉ DE INGENIERÍA MECATRÓNICA</h4>
-              <p className="text-[10px] text-pink-400 uppercase font-semibold tracking-widest">Instituto Tecnológico de Hermosillo</p>
-            </div>
-            <div className="text-right">
-              <h5 className="font-bold text-zinc-300 text-xs">Hermosillo, Sonora</h5>
-            </div>
-          </div>
-
-          <div className="my-6 space-y-3">
-            <p className="text-xs font-bold text-amber-400 uppercase tracking-widest">Otorga el presente</p>
-            <h1 className="text-3xl font-black bg-gradient-to-r from-pink-500 via-fuchsia-400 to-cyan-400 bg-clip-text text-transparent tracking-widest">
-              RECONOCIMIENTO
-            </h1>
-            <p className="text-xs text-zinc-400 italic">A:</p>
-            <h2 className="text-2xl font-extrabold text-cyan-300 capitalize py-2 border-b-2 border-pink-500/50 inline-block px-6">
-              {alumno.nombreAlumno}
-            </h2>
-            <p className="text-xs text-zinc-400 mt-2">N. Control: <strong className="text-zinc-200">{alumno.controlAlumno}</strong></p>
-          </div>
-
-          <div className="my-6 max-w-lg mx-auto space-y-2">
-            <p className="text-xs text-zinc-300 leading-relaxed">
-              Por su valiosa participación y asistencia acreditada en la actividad técnica:
-            </p>
-            <p className="text-base font-bold text-pink-400 bg-zinc-900/80 p-2.5 rounded-lg border border-pink-500/30 shadow-[0_0_10px_rgba(236,72,153,0.15)]">
-              "{evento?.titulo || 'Actividad de Mecatrónica'}"
-            </p>
-            <p className="text-[11px] text-zinc-400">
-              Impartido por: <strong className="text-cyan-300">{evento?.expositor || 'Comité de Ingeniería Mecatrónica'}</strong> — Fecha: <strong className="text-cyan-300">{evento?.fecha || new Date().toLocaleDateString()}</strong>
-            </p>
-          </div>
-
-          <div className="mt-12 pt-6 grid grid-cols-2 gap-8 max-w-md mx-auto border-t border-zinc-800">
-            <div>
-              <div className="h-10 border-b border-cyan-500/40 mb-1"></div>
-              <p className="text-[10px] font-bold text-cyan-400 uppercase">Presidente del Comité</p>
-              <p className="text-[9px] text-zinc-500">Ingeniería Mecatrónica</p>
-            </div>
-            <div>
-              <div className="h-10 border-b border-pink-500/40 mb-1"></div>
-              <p className="text-[10px] font-bold text-pink-400 uppercase">Coordinación / Staff</p>
-              <p className="text-[9px] text-zinc-500">{evento?.puestoCreador || 'Coordinador'}</p>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-};
-
-// --- CONSULTA PÚBLICA DE DIPLOMAS PARA ALUMNOS ---
-const VistaConsultaDiplomas = () => {
-  const [controlInput, setControlInput] = useState('');
-  const [buscando, setBuscando] = useState(false);
-  const [resultados, setResultados] = useState<any[]>([]);
-  const [buscado, setBuscado] = useState(false);
-  const [diplomaSeleccionado, setDiplomaSeleccionado] = useState<any>(null);
-
-  const handleBuscar = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!controlInput.trim()) return;
-    setBuscando(true);
-    setBuscado(true);
-
-    try {
-      const snapReg = await getDocs(collection(db, "registros_eventos"));
-      const inputClean = controlInput.trim().toLowerCase();
-
-      const misRegistros = snapReg.docs
-        .map(d => ({ id: d.id, ...d.data() }))
-        .filter((r: any) => r.controlAlumno?.trim().toLowerCase() === inputClean);
-
-      if (misRegistros.length > 0) {
-        const snapEv = await getDocs(collection(db, "eventos"));
-        const eventosMap = new Map();
-        snapEv.docs.forEach(d => eventosMap.set(d.id, { id: d.id, ...d.data() }));
-
-        const listaDiplomaData = misRegistros.map((reg: any) => ({
-          asistio: reg.asistio ?? false,
-          alumno: {
-            nombreAlumno: reg.nombreAlumno,
-            controlAlumno: reg.controlAlumno,
-            correoAlumno: reg.correoAlumno
-          },
-          evento: eventosMap.get(reg.eventoId) || {
-            titulo: reg.eventoTitulo || 'Evento de Mecatrónica',
-            expositor: 'Comité de Ingeniería Mecatrónica',
-            fecha: new Date(reg.fechaRegistro).toLocaleDateString(),
-            puestoCreador: 'Coordinación'
-          }
-        }));
-        setResultados(listaDiplomaData);
-      } else {
-        setResultados([]);
-      }
-    } catch (err) {
-      console.error(err);
-      alert("Error al buscar diplomas.");
-    }
-    setBuscando(false);
-  };
-
-  return (
-    <div className="max-w-2xl mx-auto space-y-6 animate-fade-in">
-      <div className="bg-gradient-to-r from-zinc-900 via-zinc-950 to-zinc-900 border border-pink-500/30 p-8 rounded-2xl shadow-[0_0_25px_rgba(236,72,153,0.25)] text-center relative overflow-hidden">
-        <div className="absolute top-0 right-0 w-48 h-48 bg-pink-500/10 rounded-full blur-3xl pointer-events-none"></div>
-        <h2 className="text-3xl font-black bg-gradient-to-r from-cyan-400 via-pink-400 to-red-500 bg-clip-text text-transparent mb-2">Consulta de Diplomas</h2>
-        <p className="text-sm text-zinc-400">Portal Oficial de Reconocimientos del Comité de Ingeniería Mecatrónica</p>
-      </div>
-
-      <form onSubmit={handleBuscar} className="bg-zinc-900/90 border border-zinc-800 p-6 rounded-xl shadow-lg flex flex-col sm:flex-row gap-3">
-        <input
-          required
-          type="text"
-          placeholder="Ingresa tu Número de Control (Ej. 22330701)"
-          className="flex-1 p-3 bg-zinc-950 border border-zinc-800 text-zinc-100 rounded-lg outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 font-mono text-sm uppercase placeholder-zinc-600"
-          value={controlInput}
-          onChange={e => setControlInput(e.target.value)}
-        />
-        <button disabled={buscando} type="submit" className="bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-black font-extrabold px-6 py-3 rounded-lg transition disabled:opacity-50 text-sm shadow-[0_0_15px_rgba(6,182,212,0.4)] flex-shrink-0">
-          {buscando ? 'Buscando...' : 'Buscar Diplomas'}
-        </button>
-      </form>
-
-      {buscado && (
-        <div className="space-y-4">
-          {resultados.length === 0 ? (
-            <div className="bg-zinc-900/80 border border-zinc-800 p-8 text-center rounded-xl text-zinc-400">
-              <p className="text-lg font-bold mb-1 text-pink-400">No se encontraron inscripciones 😕</p>
-              <p className="text-xs text-zinc-500">Verifica tu número de control o consulta con el equipo en el área de pase de lista.</p>
-            </div>
-          ) : (
-            <div className="space-y-3">
-              <p className="text-xs font-bold text-zinc-400 uppercase tracking-wider">
-                Eventos para N. Control: <span className="text-cyan-400">{controlInput.toUpperCase()}</span>
-              </p>
-              {resultados.map((item, idx) => (
-                <div key={idx} className="bg-zinc-900/80 p-5 rounded-xl border border-zinc-800 hover:border-pink-500/40 transition flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 shadow-md">
-                  <div>
-                    <div className="flex items-center gap-2 mb-1">
-                      {item.asistio ? (
-                        <span className="text-[10px] font-bold text-emerald-400 bg-emerald-500/10 border border-emerald-500/30 px-2.5 py-0.5 rounded-full uppercase tracking-wider">
-                          ✅ Asistencia Confirmada
-                        </span>
-                      ) : (
-                        <span className="text-[10px] font-bold text-amber-400 bg-amber-500/10 border border-amber-500/30 px-2.5 py-0.5 rounded-full uppercase tracking-wider">
-                          ⏳ Pendiente de Pase de Lista
-                        </span>
-                      )}
-                    </div>
-                    <h3 className="text-lg font-bold text-zinc-100">{item.evento?.titulo}</h3>
-                    <p className="text-xs text-zinc-400">
-                      Alumno: <strong className="text-cyan-300">{item.alumno?.nombreAlumno}</strong>
-                    </p>
-                    <p className="text-xs text-zinc-500 mt-0.5">
-                      Fecha: {item.evento?.fecha} | Impartido por: {item.evento?.expositor}
-                    </p>
-                  </div>
-                  {item.asistio ? (
-                    <button
-                      onClick={() => setDiplomaSeleccionado(item)}
-                      className="bg-gradient-to-r from-amber-500 to-pink-500 hover:from-amber-400 hover:to-pink-400 text-black font-extrabold px-4 py-2 rounded-lg text-xs transition shadow-[0_0_15px_rgba(245,158,11,0.3)] flex-shrink-0"
-                    >
-                      Descargar Diploma
-                    </button>
-                  ) : (
-                    <span className="text-xs text-zinc-500 italic">El diploma estará disponible una vez confirmado el pase de lista.</span>
-                  )}
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
-
-      {diplomaSeleccionado && <ModalDiploma datos={diplomaSeleccionado} onClose={() => setDiplomaSeleccionado(null)} />}
-    </div>
-  );
-};
-
-// --- MODAL DE INSCRIPCIÓN ---
-const ModalInscripcion = ({ evento, onClose }: { evento: any; onClose: () => void }) => {
-  const [alumno, setAlumno] = useState({ nombre: '', control: '', correo: '' });
-  const [enviando, setEnviando] = useState(false);
-  const [exito, setExito] = useState(false);
-
-  const handleInscribir = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setEnviando(true);
-    try {
-      await addDoc(collection(db, "registros_eventos"), {
-        eventoId: evento.id,
-        eventoTitulo: evento.titulo,
-        nombreAlumno: alumno.nombre,
-        controlAlumno: alumno.control,
-        correoAlumno: alumno.correo,
-        asistio: false,
-        fechaRegistro: new Date().toISOString()
-      });
-      setExito(true);
-    } catch (err) {
-      alert("Error al completar la inscripción. Inténtalo de nuevo.");
-    }
-    setEnviando(false);
-  };
-
-  return (
-    <div className="fixed inset-0 bg-black/80 backdrop-blur-md flex items-center justify-center p-4 z-50">
-      <div className="bg-zinc-900 border border-cyan-500/40 rounded-xl max-w-md w-full p-6 shadow-[0_0_30px_rgba(6,182,212,0.3)] relative text-zinc-100">
-        <button onClick={onClose} className="absolute top-3 right-3 text-zinc-400 hover:text-cyan-400 font-bold text-xl">✕</button>
-        {exito ? (
-          <div className="text-center py-6 space-y-4">
-            <span className="text-5xl animate-bounce inline-block">🚀</span>
-            <h3 className="text-2xl font-bold text-cyan-400">¡Inscripción Exitosa!</h3>
-            <p className="text-sm text-zinc-300">Te has registrado correctamente en <strong>{evento.titulo}</strong>.</p>
-            <button onClick={onClose} className="w-full bg-gradient-to-r from-cyan-500 to-blue-600 text-black font-extrabold py-2 rounded-lg hover:shadow-[0_0_15px_rgba(6,182,212,0.5)] transition">Cerrar</button>
-          </div>
-        ) : (
-          <form onSubmit={handleInscribir} className="space-y-4">
-            <h3 className="text-xl font-bold text-cyan-400">Inscripción a Actividad</h3>
-            <p className="text-xs text-zinc-400 mb-2">Evento: <strong className="text-pink-400">{evento.titulo}</strong></p>
-            <input required type="text" placeholder="Nombre completo del alumno" className="w-full p-2.5 bg-zinc-950 border border-zinc-800 rounded-lg outline-none focus:border-cyan-500 text-sm text-zinc-100 placeholder-zinc-600" value={alumno.nombre} onChange={e => setAlumno({ ...alumno, nombre: e.target.value })} />
-            <input required type="text" placeholder="Número de Control" className="w-full p-2.5 bg-zinc-950 border border-zinc-800 rounded-lg outline-none focus:border-cyan-500 text-sm font-mono text-zinc-100 placeholder-zinc-600" value={alumno.control} onChange={e => setAlumno({ ...alumno, control: e.target.value })} />
-            <input required type="email" placeholder="Correo electrónico" className="w-full p-2.5 bg-zinc-950 border border-zinc-800 rounded-lg outline-none focus:border-cyan-500 text-sm text-zinc-100 placeholder-zinc-600" value={alumno.correo} onChange={e => setAlumno({ ...alumno, correo: e.target.value })} />
-            <div className="flex gap-2 pt-2">
-              <button type="button" onClick={onClose} className="w-1/2 bg-zinc-800 text-zinc-300 py-2 rounded-lg font-bold hover:bg-zinc-700 text-sm">Cancelar</button>
-              <button disabled={enviando} type="submit" className="w-1/2 bg-gradient-to-r from-pink-500 to-red-500 text-white font-extrabold py-2 rounded-lg hover:shadow-[0_0_15px_rgba(236,72,153,0.5)] transition disabled:opacity-50 text-sm">
-                {enviando ? 'Inscribiendo...' : 'Confirmar'}
-              </button>
-            </div>
-          </form>
-        )}
-      </div>
-    </div>
-  );
-};
-
-//* --- VISTA INICIO --- */}
-const Inicio = () => (
-  <div className="space-y-8 animate-fade-in">
-    <div className="bg-gradient-to-r from-zinc-950 via-zinc-900 to-zinc-950 border border-cyan-500/30 text-zinc-100 p-10 rounded-2xl shadow-[0_0_30px_rgba(6,182,212,0.2)] text-center relative overflow-hidden">
-      <div className="absolute top-0 left-1/4 w-72 h-72 bg-fuchsia-600/10 rounded-full blur-3xl pointer-events-none"></div>
-      <div className="absolute bottom-0 right-1/4 w-72 h-72 bg-cyan-500/10 rounded-full blur-3xl pointer-events-none"></div>
-
-      <span className="text-xs font-black uppercase tracking-widest text-pink-500 bg-pink-500/10 border border-pink-500/30 px-3 py-1 rounded-full inline-block mb-3">
-        Plataforma Oficial
-      </span>
-      <h1 className="text-3xl md:text-5xl font-black bg-gradient-to-r from-cyan-400 via-fuchsia-400 to-pink-500 bg-clip-text text-transparent mb-3">
-        Comité de Ingeniería Mecatrónica
-      </h1>
-      <p className="text-base text-zinc-300 max-w-2xl mx-auto leading-relaxed">
-        Innovación, Robótica y Desarrollo Tecnológico en el Instituto Tecnológico de Hermosillo.
-      </p>
-    </div>
-
-    <div className="bg-zinc-900/80 p-8 rounded-xl border border-zinc-800 shadow-md max-w-4xl mx-auto text-center space-y-4">
-      <h2 className="text-2xl font-bold text-cyan-400">Bienvenido a la Plataforma</h2>
-      <p className="text-zinc-300 leading-relaxed text-sm max-w-2xl mx-auto">
-        Explora los próximos talleres prácticos de microcontroladores, programación y diseño 3D, asiste a conferencias magistrales e inscríbete para recibir reconocimientos oficiales emitidos por el Comité de Ingeniería Mecatrónica.
-      </p>
-    </div>
-  </div>
-);
-
-const VistaPublicaciones = () => {
-  const [publicaciones, setPublicaciones] = useState<any[]>([]);
-  const [cargando, setCargando] = useState(true);
-
-  useEffect(() => {
-    const obtenerPosts = async () => {
-      try {
-        const snap = await getDocs(collection(db, "publicaciones"));
-        setPublicaciones(snap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
-      } catch (e) {
-        console.error(e);
-      }
-      setCargando(false);
-    };
-    obtenerPosts();
-  }, []);
-
-  return (
-    <div className="space-y-6">
-      <h2 className="text-3xl font-bold bg-gradient-to-r from-fuchsia-400 to-pink-500 bg-clip-text text-transparent border-b border-zinc-800 pb-2">
-        Social y Cultural
-      </h2>
-      {cargando ? <p className="text-zinc-500">Cargando publicaciones...</p> : null}
-      {!cargando && publicaciones.length === 0 ? <p className="text-zinc-500">No hay publicaciones recientes por el momento.</p> : null}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {publicaciones.map((pub) => (
-          <div key={pub.id} className="bg-zinc-900/80 p-6 rounded-xl border border-zinc-800 hover:border-fuchsia-500/40 transition flex flex-col justify-between shadow-lg">
-            <div>
-              <span className="text-[10px] font-bold text-fuchsia-400 uppercase bg-fuchsia-500/10 border border-fuchsia-500/30 px-2.5 py-1 rounded-full">Anuncio del Comité</span>
-              <h3 className="text-xl font-bold text-zinc-100 mt-3 mb-2">{pub.titulo}</h3>
-              <p className="text-zinc-400 text-sm whitespace-pre-line leading-relaxed">{pub.contenido}</p>
-            </div>
-            <div className="mt-4 pt-4 border-t border-zinc-800 text-xs text-zinc-500 flex justify-between">
-              <span>Por: <strong className="text-cyan-400">{pub.autor || 'Coordinación'}</strong></span>
-              <span>{pub.fecha ? new Date(pub.fecha).toLocaleDateString() : ''}</span>
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-};
-
-const VistaEventosPublicos = ({ categoria }: { categoria: 'talleres' | 'conferencias' }) => {
-  const [eventos, setEventos] = useState<any[]>([]);
-  const [cargando, setCargando] = useState(true);
-  const [eventoSeleccionado, setEventoSeleccionado] = useState<any>(null);
-
-  useEffect(() => {
-    const obtenerEventos = async () => {
-      try {
-        const q = query(collection(db, "eventos"), where("categoria", "==", categoria));
-        const snap = await getDocs(q);
-        setEventos(snap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
-      } catch (e) {
-        console.error(e);
-      }
-      setCargando(false);
-    };
-    obtenerEventos();
-  }, [categoria]);
-
-  const tituloSeccion = categoria === 'talleres' ? 'Talleres Disponibles' : 'Conferencias Magistrales';
-
-  return (
-    <div className="space-y-6">
-      <h2 className="text-3xl font-bold bg-gradient-to-r from-cyan-400 to-blue-500 bg-clip-text text-transparent border-b border-zinc-800 pb-2">
-        {tituloSeccion}
-      </h2>
-      {cargando ? <p className="text-zinc-500">Cargando actividades...</p> : null}
-      {!cargando && eventos.length === 0 ? <p className="text-zinc-500">No hay {categoria} programados por el momento.</p> : null}
-      
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {eventos.map((ev) => (
-          <div key={ev.id} className="bg-zinc-900/80 p-6 rounded-xl border border-zinc-800 hover:border-cyan-500/40 transition flex flex-col justify-between shadow-lg">
-            <div>
-              <div className="flex justify-between items-start mb-2">
-                <span className="text-[10px] font-bold text-cyan-400 uppercase bg-cyan-500/10 border border-cyan-500/30 px-2 py-0.5 rounded-full">{ev.categoria}</span>
-                <span className="text-xs text-zinc-500 font-medium">{ev.fecha} - {ev.hora}</span>
-              </div>
-              <h3 className="text-lg font-bold text-zinc-100 mb-1">{ev.titulo}</h3>
-              <p className="text-xs text-pink-400 font-semibold mb-2">Impartido por: {ev.expositor}</p>
-              <p className="text-zinc-400 text-sm mb-4 leading-relaxed">{ev.descripcion}</p>
-            </div>
-            <div>
-              <p className="text-xs text-zinc-500 mb-3">Cupo disponible: <strong className="text-zinc-200">{ev.cupo} lugares</strong></p>
-              <button onClick={() => setEventoSeleccionado(ev)} className="w-full bg-gradient-to-r from-cyan-500 to-blue-600 text-black font-extrabold py-2.5 rounded-lg hover:shadow-[0_0_15px_rgba(6,182,212,0.4)] transition text-sm">
-                Inscribirme
-              </button>
-            </div>
-          </div>
-        ))}
-      </div>
-
-      {eventoSeleccionado && <ModalInscripcion evento={eventoSeleccionado} onClose={() => setEventoSeleccionado(null)} />}
-    </div>
-  );
-};
-
-// --- SOLICITUD DE ACCESO & LOGIN ---
-
-const FormularioSolicitud = ({ onVolver }: { onVolver: () => void }) => {
-  const [datos, setDatos] = useState({ nombre: '', numeroControl: '', puesto: '', correoInst: '', correoPers: '', telefono: '' });
-  const [enviando, setEnviando] = useState(false);
-  const [mensaje, setMensaje] = useState('');
-
-  const enviarSolicitud = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setEnviando(true);
-    try {
-      await addDoc(collection(db, "solicitudes_admin"), {
-        ...datos,
-        estado: 'pendiente',
-        permisos: { eventos: false, publicaciones: false, asistencias: true },
-        fecha: new Date().toISOString()
-      });
-      setMensaje('¡Solicitud enviada correctamente! Espera la aprobación de la directiva del comité.');
-      setDatos({ nombre: '', numeroControl: '', puesto: '', correoInst: '', correoPers: '', telefono: '' });
-    } catch (error) {
-      setMensaje('Error al enviar la solicitud.');
-    }
-    setEnviando(false);
-  };
-
-  return (
-    <div className="max-w-md mx-auto bg-zinc-900 border border-zinc-800 p-8 rounded-xl shadow-[0_0_25px_rgba(236,72,153,0.15)] mt-10 text-zinc-100">
-      <h2 className="text-2xl font-bold text-center bg-gradient-to-r from-pink-400 to-red-500 bg-clip-text text-transparent mb-1">Solicitar Acceso Staff</h2>
-      <p className="text-xs text-center text-zinc-500 mb-6">Comité de Ingeniería Mecatrónica</p>
-      {mensaje && <p className="text-emerald-400 font-medium text-xs mb-4 text-center bg-emerald-500/10 p-2.5 rounded border border-emerald-500/20">{mensaje}</p>}
-      <form onSubmit={enviarSolicitud} className="space-y-3.5">
-        <input required type="text" placeholder="Nombre completo" className="w-full p-2.5 bg-zinc-950 border border-zinc-800 rounded-lg outline-none focus:border-pink-500 text-sm text-zinc-100 placeholder-zinc-600" value={datos.nombre} onChange={e => setDatos({...datos, nombre: e.target.value})} />
-        <input required type="text" placeholder="Número de Control" className="w-full p-2.5 bg-zinc-950 border border-zinc-800 rounded-lg outline-none focus:border-pink-500 text-sm font-mono text-zinc-100 placeholder-zinc-600" value={datos.numeroControl} onChange={e => setDatos({...datos, numeroControl: e.target.value})} />
-        <input required type="text" placeholder="Puesto (Ej. Colaborador Logística, Coord. Talleres)" className="w-full p-2.5 bg-zinc-950 border border-zinc-800 rounded-lg outline-none focus:border-pink-500 text-sm text-zinc-100 placeholder-zinc-600" value={datos.puesto} onChange={e => setDatos({...datos, puesto: e.target.value})} />
-        <input required type="email" placeholder="Correo Institucional" className="w-full p-2.5 bg-zinc-950 border border-zinc-800 rounded-lg outline-none focus:border-pink-500 text-sm text-zinc-100 placeholder-zinc-600" value={datos.correoInst} onChange={e => setDatos({...datos, correoInst: e.target.value})} />
-        <input required type="email" placeholder="Correo Personal" className="w-full p-2.5 bg-zinc-950 border border-zinc-800 rounded-lg outline-none focus:border-pink-500 text-sm text-zinc-100 placeholder-zinc-600" value={datos.correoPers} onChange={e => setDatos({...datos, correoPers: e.target.value})} />
-        <input required type="tel" placeholder="Teléfono" className="w-full p-2.5 bg-zinc-950 border border-zinc-800 rounded-lg outline-none focus:border-pink-500 text-sm text-zinc-100 placeholder-zinc-600" value={datos.telefono} onChange={e => setDatos({...datos, telefono: e.target.value})} />
-        <button disabled={enviando} type="submit" className="w-full bg-gradient-to-r from-pink-500 to-red-500 text-white font-extrabold py-2.5 rounded-lg hover:shadow-[0_0_15px_rgba(236,72,153,0.4)] transition disabled:opacity-50 text-sm">
-          {enviando ? 'Enviando...' : 'Enviar Solicitud'}
-        </button>
-        <button type="button" onClick={onVolver} className="w-full text-cyan-400 text-xs mt-2 hover:underline text-center">Volver al Login</button>
-      </form>
-    </div>
-  );
-};
-
-const LoginAdmin = ({ onLogin }: { onLogin: (usuarioInfo: { isMaster: boolean; nombre: string; puesto?: string; permisos?: any }) => void }) => {
-  const [usuarioInput, setUsuarioInput] = useState('');
-  const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
-  const [cargando, setCargando] = useState(false);
-  const [mostrarSolicitud, setMostrarSolicitud] = useState(false);
-
-  const handleLogin = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError('');
-    setCargando(true);
-    const inputLimpio = usuarioInput.trim().toLowerCase();
-
-    if (inputLimpio === 'comite@admin.com' && password === 'MecaCore2004') {
-      onLogin({ isMaster: true, nombre: 'Administrador del Comité' });
-      setCargando(false);
-      return;
-    }
-
-    try {
-      const querySnapshot = await getDocs(collection(db, "solicitudes_admin"));
-      const usuarioEncontrado = querySnapshot.docs.find(doc => {
-        const data = doc.data();
-        return (data.usuarioGenerado?.toLowerCase() === inputLimpio || 
-               data.correoInst?.toLowerCase() === inputLimpio || 
-               data.correoPers?.toLowerCase() === inputLimpio) &&
-              data.passwordGenerada === password;
-      });
-
-      if (usuarioEncontrado) {
-        const data = usuarioEncontrado.data();
-        if (data.estado === 'denegado') {
-          setError('⚠ Tu acceso ha sido revocado o denegado.');
-        } else if (data.estado === 'pendiente') {
-          setError('⏳ Tu solicitud aún está pendiente de aprobación.');
-        } else if (data.estado === 'aprobado') {
-          onLogin({
-            isMaster: false,
-            nombre: data.nombre,
-            puesto: data.puesto,
-            permisos: data.permisos || { eventos: false, publicaciones: false, asistencias: true }
-          });
-        }
-      } else {
-        setError('❌ Credenciales incorrectas o usuario no registrado.');
-      }
-    } catch (err) {
-      console.error(err);
-      setError('Ocurrió un error al verificar credenciales.');
-    }
-    setCargando(false);
-  };
-
-  if (mostrarSolicitud) {
-    return <FormularioSolicitud onVolver={() => setMostrarSolicitud(false)} />;
-  }
-
-  return (
-    <div className="max-w-md mx-auto bg-zinc-900 border border-cyan-500/30 p-8 rounded-xl shadow-[0_0_25px_rgba(6,182,212,0.2)] mt-10 text-zinc-100">
-      <h2 className="text-2xl font-black text-center bg-gradient-to-r from-cyan-400 to-blue-500 bg-clip-text text-transparent mb-1">Acceso Administrativo</h2>
-      <p className="text-xs text-center text-zinc-500 mb-6">Comité de Ingeniería Mecatrónica</p>
-
-      {error && <p className="text-red-400 font-medium text-xs mb-4 text-center bg-red-500/10 p-2.5 rounded border border-red-500/20">{error}</p>}
-
-      <form onSubmit={handleLogin} className="space-y-4">
-        <div>
-          <label className="block text-xs text-zinc-400 mb-1 font-semibold">Correo o Usuario</label>
-          <input
-            required
-            type="text"
-            placeholder="comite@admin.com"
-            className="w-full p-2.5 bg-zinc-950 border border-zinc-800 rounded-lg outline-none focus:border-cyan-500 text-sm text-zinc-100 placeholder-zinc-600"
-            value={usuarioInput}
-            onChange={e => setUsuarioInput(e.target.value)}
-          />
-        </div>
-        <div>
-          <label className="block text-xs text-zinc-400 mb-1 font-semibold">Contraseña</label>
-          <input
-            required
-            type="password"
-            placeholder="••••••••"
-            className="w-full p-2.5 bg-zinc-950 border border-zinc-800 rounded-lg outline-none focus:border-cyan-500 text-sm text-zinc-100 placeholder-zinc-600"
-            value={password}
-            onChange={e => setPassword(e.target.value)}
-          />
-        </div>
-        <button
-          disabled={cargando}
-          type="submit"
-          className="w-full bg-gradient-to-r from-cyan-500 to-blue-600 text-black font-extrabold py-2.5 rounded-lg hover:shadow-[0_0_15px_rgba(6,182,212,0.4)] transition disabled:opacity-50 text-sm"
-        >
-          {cargando ? 'Verificando...' : 'Iniciar Sesión'}
-        </button>
-      </form>
-
-      <div className="mt-6 pt-4 border-t border-zinc-800 text-center">
-        <p className="text-xs text-zinc-500 mb-2">¿Eres parte del staff y no tienes cuenta?</p>
-        <button
-          onClick={() => setMostrarSolicitud(true)}
-          className="text-pink-400 hover:text-pink-300 text-xs font-bold transition"
-        >
-          📝 Solicitar Acceso Staff
-        </button>
-      </div>
-    </div>
-  );
-};
-
-// --- PANEL DE CONTROL ADMIN & STAFF ---
-
-const PanelAdmin = ({ usuario, onLogout }: { usuario: any; onLogout: () => void }) => {
-  const [tab, setTab] = useState<'asistencias' | 'eventos' | 'publicaciones' | 'solicitudes'>('asistencias');
-  
-  const [registros, setRegistros] = useState<any[]>([]);
-  const [filtroEvento, setFiltroEvento] = useState('');
-  const [eventosLista, setEventosLista] = useState<any[]>([]);
-
-  const [nuevoEvento, setNuevoEvento] = useState({ titulo: '', categoria: 'talleres', expositor: '', fecha: '', hora: '', cupo: 30, descripcion: '' });
-  const [nuevoPost, setNuevoPost] = useState({ titulo: '', contenido: '' });
-  const [solicitudes, setSolicitudes] = useState<any[]>([]);
-
-  const cargarDatos = async () => {
-    try {
-      const snapEv = await getDocs(collection(db, "eventos"));
-      setEventosLista(snapEv.docs.map(d => ({ id: d.id, ...d.data() })));
-
-      const snapReg = await getDocs(collection(db, "registros_eventos"));
-      setRegistros(snapReg.docs.map(d => ({ id: d.id, ...d.data() })));
-
-      if (usuario.isMaster) {
-        const snapSol = await getDocs(collection(db, "solicitudes_admin"));
-        setSolicitudes(snapSol.docs.map(d => ({ id: d.id, ...d.data() })));
-      }
-    } catch (e) {
-      console.error(e);
-    }
-  };
-
-  useEffect(() => {
-    cargarDatos();
-  }, []);
-
-  const toggleAsistencia = async (regId: string, valorActual: boolean) => {
-    try {
-      await updateDoc(doc(db, "registros_eventos", regId), { asistio: !valorActual });
-      setRegistros(prev => prev.map(r => r.id === regId ? { ...r, asistio: !valorActual } : r));
-    } catch (err) {
-      alert("Error al actualizar asistencia.");
-    }
-  };
-
-  const handleCrearEvento = async (e: React.FormEvent) => {
-    e.preventDefault();
-    try {
-      await addDoc(collection(db, "eventos"), {
-        ...nuevoEvento,
-        creador: usuario.nombre,
-        puestoCreador: usuario.puesto || 'Comité de Mecatrónica',
-        fechaCreacion: new Date().toISOString()
-      });
-      alert("Evento creado con éxito.");
-      setNuevoEvento({ titulo: '', categoria: 'talleres', expositor: '', fecha: '', hora: '', cupo: 30, descripcion: '' });
-      cargarDatos();
-    } catch (err) {
-      alert("Error al crear evento.");
-    }
-  };
-
-  const handleCrearPost = async (e: React.FormEvent) => {
-    e.preventDefault();
-    try {
-      await addDoc(collection(db, "publicaciones"), {
-        ...nuevoPost,
-        autor: usuario.nombre,
-        fecha: new Date().toISOString()
-      });
-      alert("Publicación creada.");
-      setNuevoPost({ titulo: '', contenido: '' });
-    } catch (err) {
-      alert("Error al publicar.");
-    }
-  };
-
-  const responderSolicitud = async (solId: string, nuevoEstado: 'aprobado' | 'denegado', solData: any) => {
-    try {
-      const userGen = solData.correoInst ? solData.correoInst.split('@')[0] : `user_${Date.now().toString().slice(-4)}`;
-      const passGen = `Meca${Math.floor(1000 + Math.random() * 9000)}`;
-
-      await updateDoc(doc(db, "solicitudes_admin", solId), {
-        estado: nuevoEstado,
-        usuarioGenerado: userGen,
-        passwordGenerada: passGen
-      });
-      alert(`Solicitud ${nuevoEstado}. Usuario: ${userGen} | Pass: ${passGen}`);
-      cargarDatos();
-    } catch (err) {
-      alert("Error al procesar solicitud.");
-    }
-  };
-
-  return (
-    <div className="space-y-6 animate-fade-in">
-      <div className="bg-zinc-900 border border-zinc-800 p-6 rounded-xl flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-        <div>
-          <span className="text-xs font-bold text-pink-400 bg-pink-500/10 border border-pink-500/30 px-3 py-1 rounded-full">
-            {usuario.isMaster ? 'Administrador' : `Staff — ${usuario.puesto}`}
-          </span>
-          <h2 className="text-2xl font-black text-zinc-100 mt-2">Bienvenido, {usuario.nombre}</h2>
-        </div>
-        <button onClick={onLogout} className="bg-zinc-800 hover:bg-zinc-700 text-zinc-300 font-bold px-4 py-2 rounded-lg text-xs transition">
-          Cerrar Sesión
-        </button>
-      </div>
-
-      <div className="flex border-b border-zinc-800 gap-4 text-sm font-bold overflow-x-auto">
-        <button
-          onClick={() => setTab('asistencias')}
-          className={`pb-3 border-b-2 transition whitespace-nowrap ${tab === 'asistencias' ? 'border-cyan-400 text-cyan-400' : 'border-transparent text-zinc-500 hover:text-zinc-300'}`}
-        >
-          📋 Pase de Lista
-        </button>
-        {(usuario.isMaster || usuario.permisos?.eventos) && (
-          <button
-            onClick={() => setTab('eventos')}
-            className={`pb-3 border-b-2 transition whitespace-nowrap ${tab === 'eventos' ? 'border-cyan-400 text-cyan-400' : 'border-transparent text-zinc-500 hover:text-zinc-300'}`}
-          >
-            ➕ Crear Eventos
-          </button>
-        )}
-        {(usuario.isMaster || usuario.permisos?.publicaciones) && (
-          <button
-            onClick={() => setTab('publicaciones')}
-            className={`pb-3 border-b-2 transition whitespace-nowrap ${tab === 'publicaciones' ? 'border-cyan-400 text-cyan-400' : 'border-transparent text-zinc-500 hover:text-zinc-300'}`}
-          >
-            📢 Publicar Anuncio
-          </button>
-        )}
-        {usuario.isMaster && (
-          <button
-            onClick={() => setTab('solicitudes')}
-            className={`pb-3 border-b-2 transition whitespace-nowrap ${tab === 'solicitudes' ? 'border-pink-500 text-pink-400' : 'border-transparent text-zinc-500 hover:text-zinc-300'}`}
-          >
-            👥 Aprobar Staff
-          </button>
-        )}
-      </div>
-
-      {tab === 'asistencias' && (
-        <div className="space-y-4">
-          <div className="flex flex-col sm:flex-row gap-4 justify-between items-center bg-zinc-900/60 p-4 rounded-lg border border-zinc-800">
-            <p className="text-sm text-zinc-400 font-medium">Filtra por evento para pasar lista:</p>
-            <select
-              className="bg-zinc-950 border border-zinc-800 text-zinc-100 p-2 rounded-lg text-sm outline-none focus:border-cyan-500"
-              value={filtroEvento}
-              onChange={e => setFiltroEvento(e.target.value)}
-            >
-              <option value="">Todos los Eventos</option>
-              {eventosLista.map(ev => (
-                <option key={ev.id} value={ev.id}>{ev.titulo}</option>
-              ))}
-            </select>
-          </div>
-
-          <div className="bg-zinc-900/80 border border-zinc-800 rounded-xl overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-sm text-zinc-300">
-                <thead className="bg-zinc-950 text-xs uppercase text-zinc-400 border-b border-zinc-800">
-                  <tr>
-                    <th className="p-4">Alumno</th>
-                    <th className="p-4">N. Control</th>
-                    <th className="p-4">Evento</th>
-                    <th className="p-4 text-center">Asistencia</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-zinc-800/50">
-                  {registros
-                    .filter(r => !filtroEvento || r.eventoId === filtroEvento)
-                    .map(reg => (
-                      <tr key={reg.id} className="hover:bg-zinc-800/30">
-                        <td className="p-4 font-semibold text-zinc-100">{reg.nombreAlumno}</td>
-                        <td className="p-4 font-mono text-xs text-cyan-300">{reg.controlAlumno}</td>
-                        <td className="p-4 text-xs text-zinc-400">{reg.eventoTitulo}</td>
-                        <td className="p-4 text-center">
-                          <button
-                            onClick={() => toggleAsistencia(reg.id, reg.asistio)}
-                            className={`px-3 py-1 rounded-full text-xs font-bold transition ${
-                              reg.asistio
-                                ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 hover:bg-emerald-500/30'
-                                : 'bg-zinc-800 text-zinc-500 border border-zinc-700 hover:bg-zinc-700'
-                            }`}
-                          >
-                            {reg.asistio ? '✅ Presente' : '❌ Ausente'}
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {tab === 'eventos' && (
-        <form onSubmit={handleCrearEvento} className="bg-zinc-900 border border-zinc-800 p-6 rounded-xl space-y-4 max-w-2xl">
-          <h3 className="text-xl font-bold text-cyan-400">Registrar Nuevo Taller o Conferencia</h3>
-          <input required type="text" placeholder="Título del evento" className="w-full p-2.5 bg-zinc-950 border border-zinc-800 rounded-lg text-sm text-zinc-100" value={nuevoEvento.titulo} onChange={e => setNuevoEvento({...nuevoEvento, titulo: e.target.value})} />
-          <div className="grid grid-cols-2 gap-4">
-            <select className="p-2.5 bg-zinc-950 border border-zinc-800 rounded-lg text-sm text-zinc-100" value={nuevoEvento.categoria} onChange={e => setNuevoEvento({...nuevoEvento, categoria: e.target.value})}>
-              <option value="talleres">Taller</option>
-              <option value="conferencias">Conferencia</option>
-            </select>
-            <input required type="text" placeholder="Expositor / Impartido por" className="p-2.5 bg-zinc-950 border border-zinc-800 rounded-lg text-sm text-zinc-100" value={nuevoEvento.expositor} onChange={e => setNuevoEvento({...nuevoEvento, expositor: e.target.value})} />
-          </div>
-          <div className="grid grid-cols-3 gap-4">
-            <input required type="date" className="p-2.5 bg-zinc-950 border border-zinc-800 rounded-lg text-sm text-zinc-100" value={nuevoEvento.fecha} onChange={e => setNuevoEvento({...nuevoEvento, fecha: e.target.value})} />
-            <input required type="text" placeholder="Hora (Ej. 10:00 AM)" className="p-2.5 bg-zinc-950 border border-zinc-800 rounded-lg text-sm text-zinc-100" value={nuevoEvento.hora} onChange={e => setNuevoEvento({...nuevoEvento, hora: e.target.value})} />
-            <input required type="number" placeholder="Cupo" className="p-2.5 bg-zinc-950 border border-zinc-800 rounded-lg text-sm text-zinc-100" value={nuevoEvento.cupo} onChange={e => setNuevoEvento({...nuevoEvento, cupo: Number(e.target.value)})} />
-          </div>
-          <textarea required placeholder="Descripción de la actividad" rows={3} className="w-full p-2.5 bg-zinc-950 border border-zinc-800 rounded-lg text-sm text-zinc-100" value={nuevoEvento.descripcion} onChange={e => setNuevoEvento({...nuevoEvento, descripcion: e.target.value})}></textarea>
-          <button type="submit" className="bg-gradient-to-r from-cyan-500 to-blue-600 text-black font-extrabold px-6 py-2.5 rounded-lg text-sm">Guardar Evento</button>
-        </form>
-      )}
-
-      {tab === 'publicaciones' && (
-        <form onSubmit={handleCrearPost} className="bg-zinc-900 border border-zinc-800 p-6 rounded-xl space-y-4 max-w-2xl">
-          <h3 className="text-xl font-bold text-fuchsia-400">Crear Anuncio Social / Cultural</h3>
-          <input required type="text" placeholder="Título de la publicación" className="w-full p-2.5 bg-zinc-950 border border-zinc-800 rounded-lg text-sm text-zinc-100" value={nuevoPost.titulo} onChange={e => setNuevoPost({...nuevoPost, titulo: e.target.value})} />
-          <textarea required placeholder="Contenido o detalles del anuncio..." rows={5} className="w-full p-2.5 bg-zinc-950 border border-zinc-800 rounded-lg text-sm text-zinc-100" value={nuevoPost.contenido} onChange={e => setNuevoPost({...nuevoPost, contenido: e.target.value})}></textarea>
-          <button type="submit" className="bg-gradient-to-r from-fuchsia-500 to-pink-500 text-white font-extrabold px-6 py-2.5 rounded-lg text-sm">Publicar</button>
-        </form>
-      )}
-
-      {tab === 'solicitudes' && usuario.isMaster && (
-        <div className="space-y-4">
-          <h3 className="text-xl font-bold text-pink-400">Solicitudes de Acceso Pendientes</h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {solicitudes.map(sol => (
-              <div key={sol.id} className="bg-zinc-900 border border-zinc-800 p-5 rounded-xl space-y-2">
-                <div className="flex justify-between">
-                  <h4 className="font-bold text-zinc-100">{sol.nombre}</h4>
-                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded uppercase ${sol.estado === 'pendiente' ? 'bg-amber-500/20 text-amber-400' : sol.estado === 'aprobado' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-red-500/20 text-red-400'}`}>
-                    {sol.estado}
-                  </span>
-                </div>
-                <p className="text-xs text-zinc-400">Puesto: <strong>{sol.puesto}</strong> | Control: <strong>{sol.numeroControl}</strong></p>
-                <p className="text-xs text-zinc-500">Correo: {sol.correoInst || sol.correoPers}</p>
-                
-                {sol.estado === 'pendiente' && (
-                  <div className="flex gap-2 pt-2">
-                    <button onClick={() => responderSolicitud(sol.id, 'aprobado', sol)} className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold px-3 py-1.5 rounded text-xs">Aprobar</button>
-                    <button onClick={() => responderSolicitud(sol.id, 'denegado', sol)} className="bg-red-600 hover:bg-red-500 text-white font-bold px-3 py-1.5 rounded text-xs">Denegar</button>
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-    </div>
-  );
-};
-
-// --- COMPONENTE PRINCIPAL (APP) ---
+  Cog, 
+  Menu, 
+  X, 
+  ShieldCheck, 
+  BookOpen, 
+  Calendar, 
+  Award, 
+  Users, 
+  MapPin, 
+  Mail, 
+  ChevronRight, 
+  Lock,
+  User,
+  Search,
+  Sparkles
+} from 'lucide-react';
 
 export default function App() {
-  const [vista, setVista] = useState('inicio');
-  const [usuarioLogueado, setUsuarioLogueado] = useState<any>(null);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState('Inicio');
+
+  const navItems = [
+    { name: 'Inicio', icon: BookOpen },
+    { name: 'Talleres', icon: Calendar },
+    { name: 'Conferencias', icon: Users },
+    { name: 'Social/Cultural', icon: Users },
+    { name: 'Diplomas', icon: Award },
+  ];
 
   return (
-    <div className="min-h-screen bg-zinc-950 text-zinc-100 flex flex-col justify-between font-sans selection:bg-pink-500 selection:text-white">
-      {/* NAVEGACIÓN */}
-      <header className="bg-zinc-900/80 backdrop-blur-md border-b border-zinc-800/80 sticky top-0 z-40">
-        <div className="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between">
-          <div onClick={() => setVista('inicio')} className="cursor-pointer flex items-center gap-2">
-            <span className="text-2xl">⚡</span>
-            <span className="font-black text-sm md:text-base bg-gradient-to-r from-cyan-400 via-fuchsia-400 to-pink-500 bg-clip-text text-transparent">
-              COMITÉ DE MECATRÓNICA
-            </span>
-          </div>
+    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col justify-between font-sans selection:bg-cyan-500 selection:text-slate-950">
+      
+      {/* NAVEGACIÓN PRINCIPAL */}
+      <header className="bg-slate-900/90 border-b border-slate-800/80 sticky top-0 z-50 backdrop-blur-md">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex items-center justify-between h-16 sm:h-20">
+            
+            {/* BRANDING / LOGO (Tuerca / Engranaje) */}
+            <div 
+              className="flex items-center gap-3 cursor-pointer select-none" 
+              onClick={() => setActiveTab('Inicio')}
+            >
+              <div className="p-2 bg-slate-800/80 rounded-xl border border-cyan-500/30 text-cyan-400 shadow-lg shadow-cyan-500/10 hover:border-cyan-400 transition">
+                <Cog className="w-6 h-6 sm:w-7 sm:h-7 animate-[spin_10s_linear_infinite]" />
+              </div>
+              <div>
+                <h1 className="font-bold text-base sm:text-lg lg:text-xl tracking-wider text-white flex items-center gap-2">
+                  COMITÉ DE MECATRÓNICA
+                </h1>
+                <p className="text-[10px] sm:text-xs text-cyan-400/80 font-mono tracking-widest uppercase">
+                  ITH — Hermosillo
+                </p>
+              </div>
+            </div>
 
-          <nav className="hidden md:flex gap-6 text-xs font-bold text-zinc-400">
-            <button onClick={() => setVista('inicio')} className={`hover:text-cyan-400 transition ${vista === 'inicio' ? 'text-cyan-400' : ''}`}>Inicio</button>
-            <button onClick={() => setVista('talleres')} className={`hover:text-cyan-400 transition ${vista === 'talleres' ? 'text-cyan-400' : ''}`}>Talleres</button>
-            <button onClick={() => setVista('conferencias')} className={`hover:text-cyan-400 transition ${vista === 'conferencias' ? 'text-cyan-400' : ''}`}>Conferencias</button>
-            <button onClick={() => setVista('publicaciones')} className={`hover:text-cyan-400 transition ${vista === 'publicaciones' ? 'text-cyan-400' : ''}`}>Social/Cultural</button>
-            <button onClick={() => setVista('diplomas')} className={`hover:text-amber-400 transition ${vista === 'diplomas' ? 'text-amber-400' : ''}`}>Diplomas</button>
-          </nav>
+            {/* NAV DE ESCRITORIO (PC) */}
+            <nav className="hidden lg:flex items-center gap-1 bg-slate-950/60 p-1.5 rounded-xl border border-slate-800">
+              {navItems.map((item) => (
+                <button
+                  key={item.name}
+                  onClick={() => setActiveTab(item.name)}
+                  className={`px-3.5 py-2 text-xs xl:text-sm font-medium rounded-lg transition-all duration-200 ${
+                    activeTab === item.name
+                      ? 'bg-cyan-500/15 text-cyan-400 border border-cyan-500/30 shadow-sm'
+                      : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50'
+                  }`}
+                >
+                  {item.name}
+                </button>
+              ))}
+            </nav>
 
-          <div>
-            {usuarioLogueado ? (
-              <button onClick={() => setVista('admin')} className="bg-pink-500/20 text-pink-400 border border-pink-500/40 px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-pink-500/30 transition">
-                ⚙️ Panel Staff
-              </button>
-            ) : (
-              <button onClick={() => setVista('login')} className="bg-zinc-800 hover:bg-zinc-700 text-zinc-200 border border-zinc-700 px-3.5 py-1.5 rounded-lg text-xs font-bold transition">
+            {/* BOTÓN ACCESO STAFF (Abre la vista dedicada de Login) */}
+            <div className="hidden md:flex items-center gap-3">
+              <button 
+                onClick={() => setActiveTab('Acceso Staff')}
+                className={`px-4 py-2 text-xs sm:text-sm font-bold rounded-lg transition-all shadow-lg active:scale-95 ${
+                  activeTab === 'Acceso Staff'
+                    ? 'bg-cyan-400 text-slate-950 shadow-cyan-500/30'
+                    : 'bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-slate-950 shadow-cyan-500/20'
+                }`}
+              >
                 Acceso Staff
               </button>
-            )}
+            </div>
+
+            {/* BOTÓN MENÚ MÓVIL */}
+            <div className="flex lg:hidden">
+              <button
+                onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+                className="p-2 rounded-lg bg-slate-800 border border-slate-700 text-slate-300 hover:text-white focus:outline-none"
+                aria-label="Abrir menú"
+              >
+                {isMobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+              </button>
+            </div>
+
           </div>
         </div>
+
+        {/* MENÚ DESPLEGABLE MÓVIL */}
+        {isMobileMenuOpen && (
+          <div className="lg:hidden border-b border-slate-800 bg-slate-900/95 backdrop-blur-xl px-4 pt-3 pb-6 space-y-2">
+            {navItems.map((item) => {
+              const Icon = item.icon;
+              return (
+                <button
+                  key={item.name}
+                  onClick={() => {
+                    setActiveTab(item.name);
+                    setIsMobileMenuOpen(false);
+                  }}
+                  className={`w-full flex items-center justify-between px-4 py-3 rounded-xl text-sm font-medium transition ${
+                    activeTab === item.name
+                      ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/40'
+                      : 'bg-slate-800/40 text-slate-300 hover:bg-slate-800'
+                  }`}
+                >
+                  <div className="flex items-center gap-3">
+                    <Icon className="w-4 h-4 text-cyan-400" />
+                    <span>{item.name}</span>
+                  </div>
+                  <ChevronRight className="w-4 h-4 text-slate-500" />
+                </button>
+              );
+            })}
+            
+            <div className="pt-3 border-t border-slate-800">
+              <button 
+                onClick={() => {
+                  setActiveTab('Acceso Staff');
+                  setIsMobileMenuOpen(false);
+                }}
+                className="w-full py-3 bg-cyan-500 text-slate-950 font-bold rounded-xl text-sm transition shadow-lg shadow-cyan-500/20"
+              >
+                Acceso Staff
+              </button>
+            </div>
+          </div>
+        )}
       </header>
 
-      {/* CONTENIDO PRINCIPAL */}
-      <main className="max-w-6xl mx-auto px-4 py-8 flex-1 w-full">
-        {vista === 'inicio' && <Inicio />}
-        {vista === 'talleres' && <VistaEventosPublicos categoria="talleres" />}
-        {vista === 'conferencias' && <VistaEventosPublicos categoria="conferencias" />}
-        {vista === 'publicaciones' && <VistaPublicaciones />}
-        {vista === 'diplomas' && <VistaConsultaDiplomas />}
-        {vista === 'login' && !usuarioLogueado && (
-          <LoginAdmin onLogin={(info) => {
-            setUsuarioLogueado(info);
-            setVista('admin');
-          }} />
+      {/* ÁREA DE CONTENIDO DINÁMICO */}
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12 w-full flex-grow space-y-8 sm:space-y-12">
+        
+        {/* BANNER SUPERIOR */}
+        <div className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-slate-900 via-slate-900/90 to-slate-950 border border-slate-800 p-6 sm:p-10 shadow-2xl">
+          <div className="absolute top-0 right-0 -mt-12 -mr-12 w-64 h-64 bg-cyan-500/10 rounded-full blur-3xl pointer-events-none"></div>
+          <div className="absolute bottom-0 left-1/3 -mb-12 w-64 h-64 bg-blue-600/10 rounded-full blur-3xl pointer-events-none"></div>
+
+          <div className="relative z-10 max-w-3xl space-y-3 sm:space-y-4">
+            <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-mono bg-cyan-500/10 border border-cyan-500/30 text-cyan-400">
+              <ShieldCheck className="w-3.5 h-3.5" /> Plataforma Oficial de Gestión
+            </span>
+            <h2 className="text-2xl sm:text-4xl lg:text-5xl font-extrabold text-white tracking-tight leading-tight">
+              Ingeniería <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-blue-500">Mecatrónica</span> ITH
+            </h2>
+            <p className="text-slate-400 text-sm sm:text-base leading-relaxed max-w-2xl">
+              {activeTab === 'Inicio' && "Portal integrado para talleres, conferencias, emisión de diplomas y gestión de la comunidad mecatrónica del Instituto Tecnológico de Hermosillo."}
+              {activeTab === 'Talleres' && "Explora la oferta de capacitaciones, cursos prácticos de robótica, automatización e impresión 3D."}
+              {activeTab === 'Conferencias' && "Ciclos de ponencias, seminarios técnicos y charlas con expertos de la industria mecatrónica."}
+              {activeTab === 'Social/Cultural' && "Eventos de integración, torneos de robótica, convivencias y actividades culturales."}
+              {activeTab === 'Diplomas' && "Módulo de consulta y validación oficial de constancias y certificados emitidos por el Comité."}
+              {activeTab === 'Acceso Staff' && "Portal exclusivo de inicio de sesión y gestión administrativa para miembros autorizados del Staff."}
+            </p>
+          </div>
+        </div>
+
+        {/* 1. VISTA: INICIO */}
+        {activeTab === 'Inicio' && (
+          <div className="space-y-8">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              <div 
+                onClick={() => setActiveTab('Talleres')} 
+                className="bg-slate-900/60 p-6 rounded-2xl border border-slate-800 hover:border-cyan-500/40 transition cursor-pointer group"
+              >
+                <div className="w-12 h-12 rounded-xl bg-cyan-500/10 border border-cyan-500/30 flex items-center justify-center text-cyan-400 mb-4 group-hover:scale-110 transition-transform">
+                  <BookOpen className="w-6 h-6" />
+                </div>
+                <h3 className="font-bold text-white text-lg mb-2">Talleres de Formación</h3>
+                <p className="text-xs sm:text-sm text-slate-400 leading-relaxed mb-4">
+                  Aprende programación de PLC, diseño 3D, microcontroladores y control automático con prácticas reales.
+                </p>
+                <span className="text-xs text-cyan-400 font-semibold flex items-center gap-1 group-hover:translate-x-1 transition-transform">
+                  Ver talleres disponibles <ChevronRight className="w-4 h-4" />
+                </span>
+              </div>
+
+              <div 
+                onClick={() => setActiveTab('Conferencias')} 
+                className="bg-slate-900/60 p-6 rounded-2xl border border-slate-800 hover:border-blue-500/40 transition cursor-pointer group"
+              >
+                <div className="w-12 h-12 rounded-xl bg-blue-500/10 border border-blue-500/30 flex items-center justify-center text-blue-400 mb-4 group-hover:scale-110 transition-transform">
+                  <Users className="w-6 h-6" />
+                </div>
+                <h3 className="font-bold text-white text-lg mb-2">Conferencias Técnicas</h3>
+                <p className="text-xs sm:text-sm text-slate-400 leading-relaxed mb-4">
+                  Conéctate con egresados e ingenieros del sector industrial, automotriz y aeroespacial.
+                </p>
+                <span className="text-xs text-blue-400 font-semibold flex items-center gap-1 group-hover:translate-x-1 transition-transform">
+                  Ver ponencias <ChevronRight className="w-4 h-4" />
+                </span>
+              </div>
+
+              <div 
+                onClick={() => setActiveTab('Diplomas')} 
+                className="bg-slate-900/60 p-6 rounded-2xl border border-slate-800 hover:border-cyan-500/40 transition cursor-pointer group md:col-span-2 lg:col-span-1"
+              >
+                <div className="w-12 h-12 rounded-xl bg-purple-500/10 border border-purple-500/30 flex items-center justify-center text-purple-400 mb-4 group-hover:scale-110 transition-transform">
+                  <Award className="w-6 h-6" />
+                </div>
+                <h3 className="font-bold text-white text-lg mb-2">Diplomas Digitales</h3>
+                <p className="text-xs sm:text-sm text-slate-400 leading-relaxed mb-4">
+                  Verificación en línea de constancias otorgadas por asistencia a simposios y talleres.
+                </p>
+                <span className="text-xs text-purple-400 font-semibold flex items-center gap-1 group-hover:translate-x-1 transition-transform">
+                  Consultar constancia <ChevronRight className="w-4 h-4" />
+                </span>
+              </div>
+            </div>
+
+            {/* UBICACIÓN Y CONTACTO ITH */}
+            <div className="bg-slate-900/80 backdrop-blur-md p-6 sm:p-8 rounded-2xl border border-slate-800 space-y-4">
+              <h3 className="text-xs font-mono font-bold text-cyan-400 tracking-wider uppercase">
+                Contacto Directivo — ITH
+              </h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="flex items-start gap-3 text-slate-300 text-xs sm:text-sm">
+                  <MapPin className="w-5 h-5 text-cyan-400 shrink-0 mt-0.5" />
+                  <span>Instituto Tecnológico de Hermosillo (ITH) — Av. Tecnológico #2, Col. San Benito, Hermosillo, Sonora.</span>
+                </div>
+                <div className="flex items-center gap-3 text-slate-300 text-xs sm:text-sm">
+                  <Mail className="w-5 h-5 text-cyan-400 shrink-0" />
+                  <span className="font-mono text-cyan-300">comite.mecatronica.ith@gmail.com</span>
+                </div>
+              </div>
+            </div>
+          </div>
         )}
-        {vista === 'admin' && usuarioLogueado && (
-          <PanelAdmin usuario={usuarioLogueado} onLogout={() => {
-            setUsuarioLogueado(null);
-            setVista('inicio');
-          }} />
+
+        {/* 2. VISTA: TALLERES */}
+        {activeTab === 'Talleres' && (
+          <div className="space-y-6">
+            <h3 className="text-xl sm:text-2xl font-bold text-white flex items-center gap-2">
+              <Calendar className="w-6 h-6 text-cyan-400" /> Cursos y Prácticas Mecatrónicas
+            </h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="bg-slate-900/80 p-6 rounded-2xl border border-slate-800 space-y-3">
+                <span className="px-2.5 py-1 rounded-md text-[10px] font-mono bg-cyan-500/20 text-cyan-400 border border-cyan-500/30 uppercase">
+                  Inscripciones Abiertas
+                </span>
+                <h4 className="text-lg font-bold text-white">Programación de PLC Siemens S7-1200</h4>
+                <p className="text-xs sm:text-sm text-slate-400">
+                  Curso intensivo de automatización industrial, lógica de escalones (Ladder) e integración de sensores.
+                </p>
+                <div className="pt-2 text-xs text-slate-500 font-mono">
+                  Lugar: Lab de Robótica ITH | Horarios: Sábados 9:00 AM
+                </div>
+              </div>
+
+              <div className="bg-slate-900/80 p-6 rounded-2xl border border-slate-800 space-y-3">
+                <span className="px-2.5 py-1 rounded-md text-[10px] font-mono bg-blue-500/20 text-blue-400 border border-blue-500/30 uppercase">
+                  Cupo Limitado
+                </span>
+                <h4 className="text-lg font-bold text-white">Diseño y Modelado 3D en SolidWorks</h4>
+                <p className="text-xs sm:text-sm text-slate-400">
+                  Fundamentos de ensamble mecánico, tolerancias y preparación de piezas para impresión 3D.
+                </p>
+                <div className="pt-2 text-xs text-slate-500 font-mono">
+                  Lugar: Centro de Cómputo ITH | Horarios: Viernes 4:00 PM
+                </div>
+              </div>
+            </div>
+          </div>
         )}
+
+        {/* 3. VISTA: CONFERENCIAS */}
+        {activeTab === 'Conferencias' && (
+          <div className="space-y-6">
+            <h3 className="text-xl sm:text-2xl font-bold text-white flex items-center gap-2">
+              <Users className="w-6 h-6 text-cyan-400" /> Ciclo de Ponencias y Seminarios
+            </h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="bg-slate-900/80 p-6 rounded-2xl border border-slate-800 space-y-3">
+                <h4 className="text-lg font-bold text-white">Robótica Móvil e Inteligencia Artificial</h4>
+                <p className="text-xs sm:text-sm text-slate-400">
+                  Ponencia magna sobre navegación autónoma, algoritmos SLAM y visión por computadora aplicada a la industria.
+                </p>
+                <div className="pt-2 text-xs text-slate-500 font-mono">
+                  Lugar: Auditorio Principal ITH
+                </div>
+              </div>
+              <div className="bg-slate-900/80 p-6 rounded-2xl border border-slate-800 space-y-3">
+                <h4 className="text-lg font-bold text-white">Industria 4.0 e Internet de las Cosas (IoT)</h4>
+                <p className="text-xs sm:text-sm text-slate-400">
+                  Integración de sistemas embebidos con plataformas en la nube para monitoreo en tiempo real.
+                </p>
+                <div className="pt-2 text-xs text-slate-500 font-mono">
+                  Lugar: Sala Audiovisual ITH
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* 4. VISTA: SOCIAL / CULTURAL */}
+        {activeTab === 'Social/Cultural' && (
+          <div className="space-y-6">
+            <h3 className="text-xl sm:text-2xl font-bold text-white flex items-center gap-2">
+              <Sparkles className="w-6 h-6 text-cyan-400" /> Eventos Sociales y Torneos
+            </h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="bg-slate-900/80 p-6 rounded-2xl border border-slate-800 space-y-3">
+                <h4 className="text-lg font-bold text-white">Torneo Anual de Robótica ITH</h4>
+                <p className="text-xs sm:text-sm text-slate-400">
+                  Competencia interna de robots sumo, seguidores de línea y laberinto.
+                </p>
+              </div>
+              <div className="bg-slate-900/80 p-6 rounded-2xl border border-slate-800 space-y-3">
+                <h4 className="text-lg font-bold text-white">Convivencia Mecatrónica</h4>
+                <p className="text-xs sm:text-sm text-slate-400">
+                  Evento de bienvenida para estudiantes de nuevo ingreso y docentes.
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* 5. VISTA: DIPLOMAS */}
+        {activeTab === 'Diplomas' && (
+          <div className="max-w-2xl mx-auto bg-slate-900/80 backdrop-blur-md p-6 sm:p-8 rounded-2xl border border-slate-800 space-y-6">
+            <div className="text-center space-y-2">
+              <Award className="w-10 h-10 text-cyan-400 mx-auto" />
+              <h3 className="text-xl font-bold text-white">Validación Oficial de Certificados</h3>
+              <p className="text-xs sm:text-sm text-slate-400">
+                Consulta la autenticidad de tu folio o número de control.
+              </p>
+            </div>
+            
+            <div className="flex gap-2">
+              <div className="relative flex-1">
+                <Search className="w-4 h-4 text-slate-500 absolute left-3.5 top-3.5" />
+                <input 
+                  type="text" 
+                  placeholder="Ej: MEC-2026-9812" 
+                  className="w-full pl-10 pr-4 py-2.5 bg-slate-950/80 border border-slate-700/80 rounded-xl text-sm focus:outline-none focus:border-cyan-400 focus:ring-1 focus:ring-cyan-400 text-white placeholder-slate-600 font-mono"
+                />
+              </div>
+              <button className="px-5 py-2.5 bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold rounded-xl text-sm transition shadow-lg shadow-cyan-500/20">
+                Buscar
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* 6. VISTA EXCLUSIVA: ACCESO STAFF (LOGIN) */}
+        {activeTab === 'Acceso Staff' && (
+          <div className="max-w-md mx-auto bg-slate-900/90 backdrop-blur-md p-6 sm:p-8 rounded-2xl border border-slate-800 shadow-2xl space-y-6">
+            <div>
+              <div className="flex items-center gap-2 mb-1">
+                <Lock className="w-5 h-5 text-cyan-400" />
+                <h3 className="text-xl font-bold text-white">Acceso Administrativo</h3>
+              </div>
+              <p className="text-xs sm:text-sm text-slate-400">
+                Exclusivo para coordinadores y equipo de trabajo.
+              </p>
+            </div>
+
+            <form className="space-y-4" onSubmit={(e) => e.preventDefault()}>
+              <div>
+                <label className="block text-xs font-medium text-slate-300 uppercase tracking-wider mb-1.5">
+                  Usuario o Correo
+                </label>
+                <div className="relative">
+                  <User className="w-4 h-4 text-slate-500 absolute left-3.5 top-3.5" />
+                  <input 
+                    type="text" 
+                    placeholder="usuario@ith.edu.mx" 
+                    className="w-full pl-10 pr-4 py-2.5 bg-slate-950/80 border border-slate-700/80 rounded-xl text-sm focus:outline-none focus:border-cyan-400 focus:ring-1 focus:ring-cyan-400 transition text-white placeholder-slate-600"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-slate-300 uppercase tracking-wider mb-1.5">
+                  Contraseña
+                </label>
+                <div className="relative">
+                  <Lock className="w-4 h-4 text-slate-500 absolute left-3.5 top-3.5" />
+                  <input 
+                    type="password" 
+                    placeholder="••••••••" 
+                    className="w-full pl-10 pr-4 py-2.5 bg-slate-950/80 border border-slate-700/80 rounded-xl text-sm focus:outline-none focus:border-cyan-400 focus:ring-1 focus:ring-cyan-400 transition text-white placeholder-slate-600"
+                  />
+                </div>
+              </div>
+
+              <button 
+                type="submit" 
+                className="w-full py-3 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-slate-950 font-bold rounded-xl transition-all shadow-lg shadow-cyan-500/20 text-sm active:scale-[0.99]"
+              >
+                Iniciar Sesión
+              </button>
+            </form>
+
+            <div className="pt-5 border-t border-slate-800/80 text-center space-y-3">
+              <p className="text-xs text-slate-400">
+                ¿Eres miembro del equipo y aún no posees credenciales?
+              </p>
+              
+              {/* BOTÓN SOLICITAR ACCESO STAFF (SIN EMOJIS) */}
+              <button className="w-full py-2.5 px-4 bg-slate-800/70 hover:bg-slate-800 text-cyan-400 font-semibold rounded-xl border border-cyan-500/30 hover:border-cyan-400/60 transition-all text-xs sm:text-sm">
+                Solicitar Acceso Staff
+              </button>
+            </div>
+          </div>
+        )}
+
       </main>
 
-      <Footer />
+      {/* PIE DE PÁGINA */}
+      <footer className="bg-slate-900/80 border-t border-slate-800 py-6 text-center text-xs text-slate-500 px-4 mt-auto">
+        <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
+          <div className="flex items-center gap-2">
+            <Cog className="w-4 h-4 text-cyan-400" />
+            <span className="font-medium text-slate-400">Comité de Ingeniería Mecatrónica</span>
+          </div>
+          <p>© {new Date().getFullYear()} ITH — Todos los derechos reservados.</p>
+        </div>
+      </footer>
+
     </div>
   );
 }
