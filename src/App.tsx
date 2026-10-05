@@ -208,7 +208,7 @@ const VistaConsultaDiplomas = () => {
     <div className="max-w-2xl mx-auto space-y-6 animate-fade-in">
       <div className="bg-gradient-to-r from-zinc-900 via-zinc-950 to-zinc-900 border border-pink-500/30 p-8 rounded-2xl shadow-[0_0_25px_rgba(236,72,153,0.25)] text-center relative overflow-hidden">
         <div className="absolute top-0 right-0 w-48 h-48 bg-pink-500/10 rounded-full blur-3xl pointer-events-none"></div>
-        <h2 className="text-3xl font-black bg-gradient-to-r from-cyan-400 via-pink-400 to-red-500 bg-clip-text text-transparent mb-2">📜 Consulta de Diplomas</h2>
+        <h2 className="text-3xl font-black bg-gradient-to-r from-cyan-400 via-pink-400 to-red-500 bg-clip-text text-transparent mb-2">Consulta de Diplomas</h2>
         <p className="text-sm text-zinc-400">Portal Oficial de Reconocimientos del Comité de Ingeniería Mecatrónica</p>
       </div>
 
@@ -222,7 +222,7 @@ const VistaConsultaDiplomas = () => {
           onChange={e => setControlInput(e.target.value)}
         />
         <button disabled={buscando} type="submit" className="bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-black font-extrabold px-6 py-3 rounded-lg transition disabled:opacity-50 text-sm shadow-[0_0_15px_rgba(6,182,212,0.4)] flex-shrink-0">
-          {buscando ? 'Buscando...' : '🔍 Buscar Diplomas'}
+          {buscando ? 'Buscando...' : 'Buscar Diplomas'}
         </button>
       </form>
 
@@ -265,7 +265,7 @@ const VistaConsultaDiplomas = () => {
                       onClick={() => setDiplomaSeleccionado(item)}
                       className="bg-gradient-to-r from-amber-500 to-pink-500 hover:from-amber-400 hover:to-pink-400 text-black font-extrabold px-4 py-2 rounded-lg text-xs transition shadow-[0_0_15px_rgba(245,158,11,0.3)] flex-shrink-0"
                     >
-                      📜 Descargar Diploma
+                      Descargar Diploma
                     </button>
                   ) : (
                     <span className="text-xs text-zinc-500 italic">El diploma estará disponible una vez confirmado el pase de lista.</span>
@@ -898,7 +898,7 @@ export default function App() {
             <button onClick={() => setVista('talleres')} className={`hover:text-cyan-400 transition ${vista === 'talleres' ? 'text-cyan-400' : ''}`}>Talleres</button>
             <button onClick={() => setVista('conferencias')} className={`hover:text-cyan-400 transition ${vista === 'conferencias' ? 'text-cyan-400' : ''}`}>Conferencias</button>
             <button onClick={() => setVista('publicaciones')} className={`hover:text-cyan-400 transition ${vista === 'publicaciones' ? 'text-cyan-400' : ''}`}>Social/Cultural</button>
-            <button onClick={() => setVista('diplomas')} className={`hover:text-amber-400 transition ${vista === 'diplomas' ? 'text-amber-400' : ''}`}>📜 Diplomas</button>
+            <button onClick={() => setVista('diplomas')} className={`hover:text-amber-400 transition ${vista === 'diplomas' ? 'text-amber-400' : ''}`}>Diplomas</button>
           </nav>
 
           <div>
