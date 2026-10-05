@@ -339,7 +339,7 @@ const ModalInscripcion = ({ evento, onClose }: { evento: any; onClose: () => voi
   );
 };
 
-// --- VISTA INICIO ---
+h1// --- VISTA INICIO ---
 const Inicio = () => (
   <div className="space-y-8 animate-fade-in">
     <div className="bg-gradient-to-r from-zinc-950 via-zinc-900 to-zinc-950 border border-cyan-500/30 text-zinc-100 p-10 rounded-2xl shadow-[0_0_30px_rgba(6,182,212,0.2)] text-center relative overflow-hidden">
