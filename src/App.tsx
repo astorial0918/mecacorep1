@@ -406,25 +406,28 @@ const PanelCoordinador = ({ usuario, puesto, permisos, onLogout }: { usuario: st
     }
   };
 
+  const cargarAsistentes = async (eventId: string) => {
+    if (!eventId) return;
+    setCargandoLista(true);
+    try {
+      const q = query(collection(db, "registros_eventos"), where("eventoId", "==", eventId));
+      const snap = await getDocs(q);
+      setListaAlumnos(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+    } catch (e) {
+      console.error(e);
+    }
+    setCargandoLista(false);
+  };
+
   useEffect(() => {
     cargarEventos();
     cargarPublicaciones();
   }, []);
 
   useEffect(() => {
-    if (!eventoSeleccionadoId) return;
-    const cargarAsistentes = async () => {
-      setCargandoLista(true);
-      try {
-        const q = query(collection(db, "registros_eventos"), where("eventoId", "==", eventoSeleccionadoId));
-        const snap = await getDocs(q);
-        setListaAlumnos(snap.docs.map(d => ({ id: d.id, ...d.data() })));
-      } catch (e) {
-        console.error(e);
-      }
-      setCargandoLista(false);
-    };
-    cargarAsistentes();
+    if (eventoSeleccionadoId) {
+      cargarAsistentes(eventoSeleccionadoId);
+    }
   }, [eventoSeleccionadoId]);
 
   const handleCrearEvento = async (e: React.FormEvent) => {
@@ -478,7 +481,15 @@ const PanelCoordinador = ({ usuario, puesto, permisos, onLogout }: { usuario: st
     }
   };
 
-  // FUNCIONALIDAD: EXPORTAR A EXCEL / CSV
+  // ELIMINAR UN ALUMNO DE LA LISTA DE REGISTRO
+  const eliminarAlumnoInscrito = async (idRegistro: string) => {
+    if (confirm("¿Estás seguro de eliminar a este alumno del registro?")) {
+      await deleteDoc(doc(db, "registros_eventos", idRegistro));
+      cargarAsistentes(eventoSeleccionadoId);
+    }
+  };
+
+  // EXPORTAR A EXCEL / CSV
   const exportarCSV = () => {
     if (!listaAlumnos.length) {
       alert("No hay alumnos inscritos en este evento para exportar.");
@@ -586,7 +597,6 @@ const PanelCoordinador = ({ usuario, puesto, permisos, onLogout }: { usuario: st
             </button>
           </form>
 
-          {/* LISTA Y ELIMINACIÓN DE EVENTOS EXISTENTES */}
           <div className="space-y-3 border-l pl-0 lg:pl-6">
             <h3 className="text-xl font-bold text-gray-800 mb-2">Eventos Publicados ({misEventos.length})</h3>
             <div className="space-y-3 max-h-96 overflow-y-auto pr-1">
@@ -625,7 +635,6 @@ const PanelCoordinador = ({ usuario, puesto, permisos, onLogout }: { usuario: st
             </button>
           </form>
 
-          {/* LISTA Y ELIMINACIÓN DE PUBLICACIONES */}
           <div className="space-y-3 border-l pl-0 lg:pl-6">
             <h3 className="text-xl font-bold text-gray-800 mb-2">Anuncios Activos ({misPublicaciones.length})</h3>
             <div className="space-y-3 max-h-96 overflow-y-auto pr-1">
@@ -646,7 +655,7 @@ const PanelCoordinador = ({ usuario, puesto, permisos, onLogout }: { usuario: st
         </div>
       )}
 
-      {/* MÓDULO 3: CONSULTAR ASISTENCIAS Y EXPORTAR A EXCEL */}
+      {/* MÓDULO 3: CONSULTAR Y ELIMINAR ASISTENTES */}
       {pestana === 'asistencias' && userPermisos.asistencias && (
         <div className="space-y-4">
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
@@ -680,13 +689,14 @@ const PanelCoordinador = ({ usuario, puesto, permisos, onLogout }: { usuario: st
                       <th className="p-3">N. Control</th>
                       <th className="p-3">Correo</th>
                       <th className="p-3">Fecha Inscripción</th>
+                      <th className="p-3 text-right">Acción</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y">
                     {cargandoLista ? (
-                      <tr><td colSpan={5} className="p-4 text-center">Cargando lista...</td></tr>
+                      <tr><td colSpan={6} className="p-4 text-center">Cargando lista...</td></tr>
                     ) : listaAlumnos.length === 0 ? (
-                      <tr><td colSpan={5} className="p-4 text-center text-gray-400">No hay alumnos inscritos en este evento todavía.</td></tr>
+                      <tr><td colSpan={6} className="p-4 text-center text-gray-400">No hay alumnos inscritos en este evento todavía.</td></tr>
                     ) : (
                       listaAlumnos.map((al, index) => (
                         <tr key={al.id} className="hover:bg-gray-50">
@@ -695,6 +705,11 @@ const PanelCoordinador = ({ usuario, puesto, permisos, onLogout }: { usuario: st
                           <td className="p-3">{al.controlAlumno}</td>
                           <td className="p-3">{al.correoAlumno}</td>
                           <td className="p-3 text-xs text-gray-400">{new Date(al.fechaRegistro).toLocaleDateString()}</td>
+                          <td className="p-3 text-right">
+                            <button onClick={() => eliminarAlumnoInscrito(al.id)} className="bg-red-100 text-red-600 px-2.5 py-1 rounded text-xs font-bold hover:bg-red-200 transition">
+                              🗑️ Eliminar
+                            </button>
+                          </td>
                         </tr>
                       ))
                     )}
@@ -709,27 +724,84 @@ const PanelCoordinador = ({ usuario, puesto, permisos, onLogout }: { usuario: st
   );
 };
 
-// --- PANEL MASTER ADMIN COMPLETO ---
+// --- PANEL MASTER ADMIN INTEGRAL ---
 
 const PanelMaster = ({ onLogout }: { onLogout: () => void }) => {
+  const [pestanaMaster, setPestanaMaster] = useState<'coordinadores' | 'eventos' | 'publicaciones' | 'asistencias'>('coordinadores');
+
+  // Solicitudes Coordinadores
   const [solicitudes, setSolicitudes] = useState<any[]>([]);
+
+  // Eventos / Publicaciones / Asistencias Master
+  const [eventosMaster, setEventosMaster] = useState<any[]>([]);
+  const [publicacionesMaster, setPublicacionesMaster] = useState<any[]>([]);
+  const [eventoSeleccionadoId, setEventoSeleccionadoId] = useState('');
+  const [listaAlumnos, setListaAlumnos] = useState<any[]>([]);
+  const [cargandoLista, setCargandoLista] = useState(false);
+
+  // Forms Master
+  const [nuevoEvento, setNuevoEvento] = useState({ titulo: '', categoria: 'talleres', expositor: '', fecha: '', hora: '', cupo: '30', descripcion: '' });
+  const [nuevaPub, setNuevaPub] = useState({ titulo: '', contenido: '' });
 
   const cargarSolicitudes = async () => {
     try {
-      const querySnapshot = await getDocs(collection(db, "solicitudes_admin"));
-      setSolicitudes(querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+      const snap = await getDocs(collection(db, "solicitudes_admin"));
+      setSolicitudes(snap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
     } catch (err) {
-      console.error("Error al cargar solicitudes", err);
+      console.error(err);
     }
+  };
+
+  const cargarEventosMaster = async () => {
+    try {
+      const snap = await getDocs(collection(db, "eventos"));
+      const docs = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      setEventosMaster(docs);
+      if (docs.length > 0 && !eventoSeleccionadoId) {
+        setEventoSeleccionadoId(docs[0].id);
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const cargarPublicacionesMaster = async () => {
+    try {
+      const snap = await getDocs(collection(db, "publicaciones"));
+      setPublicacionesMaster(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const cargarAsistentesMaster = async (eventId: string) => {
+    if (!eventId) return;
+    setCargandoLista(true);
+    try {
+      const q = query(collection(db, "registros_eventos"), where("eventoId", "==", eventId));
+      const snap = await getDocs(q);
+      setListaAlumnos(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+    } catch (e) {
+      console.error(e);
+    }
+    setCargandoLista(false);
   };
 
   useEffect(() => {
     cargarSolicitudes();
+    cargarEventosMaster();
+    cargarPublicacionesMaster();
   }, []);
 
+  useEffect(() => {
+    if (eventoSeleccionadoId) {
+      cargarAsistentesMaster(eventoSeleccionadoId);
+    }
+  }, [eventoSeleccionadoId]);
+
+  // Acciones de Coordinadores
   const cambiarEstado = async (id: string, nuevoEstado: 'aprobado' | 'denegado', sol?: any) => {
     let updateData: any = { estado: nuevoEstado };
-
     if (nuevoEstado === 'aprobado' && !sol?.usuarioGenerado) {
       const letras = 'abcdefghijklmnopqrstuvwxyz';
       const l1 = letras[Math.floor(Math.random() * letras.length)];
@@ -740,7 +812,6 @@ const PanelMaster = ({ onLogout }: { onLogout: () => void }) => {
       updateData.passwordGenerada = `${pre}#${sol?.numeroControl || '0000'}${l1}${l2}`;
       updateData.permisos = sol?.permisos || { eventos: true, publicaciones: true, asistencias: true };
     }
-
     await updateDoc(doc(db, "solicitudes_admin", id), updateData);
     cargarSolicitudes();
   };
@@ -750,10 +821,7 @@ const PanelMaster = ({ onLogout }: { onLogout: () => void }) => {
       ...(permisosPrevios || { eventos: true, publicaciones: true, asistencias: true }),
       [permisoKey]: !valorActual
     };
-
-    await updateDoc(doc(db, "solicitudes_admin", id), {
-      permisos: nuevosPermisos
-    });
+    await updateDoc(doc(db, "solicitudes_admin", id), { permisos: nuevosPermisos });
     cargarSolicitudes();
   };
 
@@ -764,99 +832,347 @@ const PanelMaster = ({ onLogout }: { onLogout: () => void }) => {
     }
   };
 
+  // Acciones Master sobre Eventos / Anuncios / Asistencias
+  const handleCrearEventoMaster = async (e: React.FormEvent) => {
+    e.preventDefault();
+    await addDoc(collection(db, "eventos"), {
+      ...nuevoEvento,
+      creador: "Master Admin",
+      puestoCreador: "Administrador Principal",
+      fechaCreacion: new Date().toISOString()
+    });
+    alert("¡Evento publicado por Master Admin!");
+    setNuevoEvento({ titulo: '', categoria: 'talleres', expositor: '', fecha: '', hora: '', cupo: '30', descripcion: '' });
+    cargarEventosMaster();
+  };
+
+  const eliminarEventoMaster = async (id: string) => {
+    if (confirm("¿Eliminar evento?")) {
+      await deleteDoc(doc(db, "eventos", id));
+      cargarEventosMaster();
+    }
+  };
+
+  const handleCrearPublicacionMaster = async (e: React.FormEvent) => {
+    e.preventDefault();
+    await addDoc(collection(db, "publicaciones"), {
+      ...nuevaPub,
+      autor: "Master Admin",
+      fecha: new Date().toISOString()
+    });
+    alert("¡Anuncio publicado!");
+    setNuevaPub({ titulo: '', contenido: '' });
+    cargarPublicacionesMaster();
+  };
+
+  const eliminarPublicacionMaster = async (id: string) => {
+    if (confirm("¿Eliminar anuncio?")) {
+      await deleteDoc(doc(db, "publicaciones", id));
+      cargarPublicacionesMaster();
+    }
+  };
+
+  const eliminarAlumnoInscritoMaster = async (idRegistro: string) => {
+    if (confirm("¿Eliminar alumno registrado?")) {
+      await deleteDoc(doc(db, "registros_eventos", idRegistro));
+      cargarAsistentesMaster(eventoSeleccionadoId);
+    }
+  };
+
+  const exportarCSVMaster = () => {
+    if (!listaAlumnos.length) return alert("No hay inscritos en este evento.");
+    const eventoActual = eventosMaster.find(e => e.id === eventoSeleccionadoId);
+    const headers = ["No.", "Nombre del Alumno", "Numero de Control", "Correo Electrónico", "Fecha de Registro"];
+    const rows = listaAlumnos.map((al, idx) => [
+      idx + 1,
+      `"${al.nombreAlumno || ''}"`,
+      `"${al.controlAlumno || ''}"`,
+      `"${al.correoAlumno || ''}"`,
+      `"${new Date(al.fechaRegistro).toLocaleDateString()}"`
+    ]);
+    const csvContent = "\uFEFF" + [headers.join(","), ...rows.map(r => r.join(","))].join("\n");
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    link.setAttribute("download", `Master_Asistencia_${(eventoActual?.titulo || 'Evento').replace(/\s+/g, '_')}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   return (
-    <div className="bg-white p-8 rounded-xl shadow-lg border border-gray-100 animate-fade-in">
-      <div className="flex justify-between items-center mb-6">
+    <div className="bg-white p-8 rounded-xl shadow-lg border border-gray-100 animate-fade-in space-y-6">
+      <div className="flex justify-between items-center border-b pb-4">
         <div>
           <h2 className="text-2xl font-bold text-blue-900">Panel Master MecaCore</h2>
-          <p className="text-xs text-gray-500">Gestión de Accesos y Permisos para Coordinadores</p>
+          <p className="text-xs text-gray-500">Superadministrador de la plataforma</p>
         </div>
-        <button onClick={onLogout} className="bg-red-100 text-red-600 px-4 py-2 rounded-lg font-medium hover:bg-red-200 transition">Cerrar Sesión</button>
+        <button onClick={onLogout} className="bg-red-100 text-red-600 px-4 py-2 rounded-lg font-medium hover:bg-red-200 transition">
+          Cerrar Sesión
+        </button>
       </div>
-      
-      <h3 className="text-xl font-bold mb-4 text-gray-700">Solicitudes de Coordinadores</h3>
-      <div className="space-y-4">
-        {solicitudes.length === 0 ? <p className="text-gray-500">No hay solicitudes registradas aún.</p> : null}
-        {solicitudes.map((sol) => {
-          const permisos = sol.permisos || { eventos: true, publicaciones: true, asistencias: true };
-          
-          return (
-            <div key={sol.id} className="p-5 border rounded-xl bg-gray-50 flex flex-col gap-4">
-              <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-2">
-                <div>
-                  <div className="flex items-center gap-2">
-                    <p className="font-bold text-blue-900 text-lg">{sol.nombre}</p>
-                    <span className={`text-xs px-2 py-0.5 rounded-full font-bold uppercase ${sol.estado === 'aprobado' ? 'bg-green-100 text-green-800' : sol.estado === 'denegado' ? 'bg-red-100 text-red-800' : 'bg-yellow-100 text-yellow-800'}`}>
-                      {sol.estado || 'pendiente'}
-                    </span>
-                  </div>
-                  <p className="text-sm text-gray-600">Puesto: <strong>{sol.puesto}</strong> | Control: {sol.numeroControl}</p>
-                  <p className="text-xs text-gray-500">Inst: {sol.correoInst} | Pers: {sol.correoPers} | Tel: {sol.telefono}</p>
-                </div>
 
-                {/* BOTONES DE ACCIÓN PRINCIPALES */}
-                <div className="flex flex-wrap gap-2">
-                  {sol.estado === 'pendiente' && (
-                    <>
-                      <button onClick={() => cambiarEstado(sol.id, 'aprobado', sol)} className="bg-green-600 text-white px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-green-700 transition">
-                        ✓ Aprobar Acceso
-                      </button>
-                      <button onClick={() => cambiarEstado(sol.id, 'denegado')} className="bg-red-600 text-white px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-red-700 transition">
-                        ✕ Denegar
-                      </button>
-                    </>
-                  )}
+      {/* TABS MASTER ADMIN */}
+      <div className="flex flex-wrap gap-2 border-b pb-3">
+        <button onClick={() => setPestanaMaster('coordinadores')} className={`px-4 py-2 rounded-lg text-sm font-bold transition ${pestanaMaster === 'coordinadores' ? 'bg-blue-900 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>
+          👥 Coordinadores y Accesos
+        </button>
+        <button onClick={() => setPestanaMaster('eventos')} className={`px-4 py-2 rounded-lg text-sm font-bold transition ${pestanaMaster === 'eventos' ? 'bg-blue-900 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>
+          📅 Crear/Gestionar Eventos
+        </button>
+        <button onClick={() => setPestanaMaster('publicaciones')} className={`px-4 py-2 rounded-lg text-sm font-bold transition ${pestanaMaster === 'publicaciones' ? 'bg-blue-900 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>
+          📰 Crear/Gestionar Anuncios
+        </button>
+        <button onClick={() => setPestanaMaster('asistencias')} className={`px-4 py-2 rounded-lg text-sm font-bold transition ${pestanaMaster === 'asistencias' ? 'bg-blue-900 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>
+          📋 Listas y Asistencias
+        </button>
+      </div>
 
-                  {sol.estado === 'aprobado' && (
-                    <button onClick={() => cambiarEstado(sol.id, 'denegado')} className="bg-red-100 text-red-700 border border-red-200 px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-red-200 transition">
-                      🚫 Revocar Acceso
-                    </button>
-                  )}
-
-                  {sol.estado === 'denegado' && (
-                    <button onClick={() => cambiarEstado(sol.id, 'aprobado', sol)} className="bg-blue-600 text-white px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-blue-700 transition">
-                      🔄 Reaprobar Acceso
-                    </button>
-                  )}
-
-                  <button onClick={() => eliminarRegistro(sol.id)} className="bg-gray-200 text-gray-700 px-2.5 py-1.5 rounded-lg text-xs font-bold hover:bg-gray-300 transition" title="Eliminar registro">
-                    🗑️
-                  </button>
-                </div>
-              </div>
-
-              {/* CREDENCIALES Y PERMISOS SI ESTÁ APROBADO */}
-              {sol.estado === 'aprobado' && (
-                <div className="pt-3 border-t grid grid-cols-1 md:grid-cols-2 gap-4 bg-white p-3 rounded-lg border">
+      {/* TAB 1: GESTIÓN DE COORDINADORES */}
+      {pestanaMaster === 'coordinadores' && (
+        <div className="space-y-4">
+          <h3 className="text-xl font-bold text-gray-700">Solicitudes y Cuentas de Coordinadores</h3>
+          {solicitudes.length === 0 ? <p className="text-gray-500">No hay solicitudes registradas aún.</p> : null}
+          {solicitudes.map((sol) => {
+            const permisos = sol.permisos || { eventos: true, publicaciones: true, asistencias: true };
+            return (
+              <div key={sol.id} className="p-5 border rounded-xl bg-gray-50 flex flex-col gap-4">
+                <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-2">
                   <div>
-                    <p className="text-xs font-bold text-gray-500 uppercase mb-1">Credenciales Generadas:</p>
-                    <p className="text-xs text-gray-800"><strong>Usuario:</strong> <code className="bg-gray-100 px-1 py-0.5 rounded text-blue-900">{sol.usuarioGenerado}</code></p>
-                    <p className="text-xs text-gray-800"><strong>Contraseña:</strong> <code className="bg-gray-100 px-1 py-0.5 rounded text-blue-900">{sol.passwordGenerada}</code></p>
+                    <div className="flex items-center gap-2">
+                      <p className="font-bold text-blue-900 text-lg">{sol.nombre}</p>
+                      <span className={`text-xs px-2 py-0.5 rounded-full font-bold uppercase ${sol.estado === 'aprobado' ? 'bg-green-100 text-green-800' : sol.estado === 'denegado' ? 'bg-red-100 text-red-800' : 'bg-yellow-100 text-yellow-800'}`}>
+                        {sol.estado || 'pendiente'}
+                      </span>
+                    </div>
+                    <p className="text-sm text-gray-600">Puesto: <strong>{sol.puesto}</strong> | Control: {sol.numeroControl}</p>
+                    <p className="text-xs text-gray-500">Inst: {sol.correoInst} | Pers: {sol.correoPers} | Tel: {sol.telefono}</p>
                   </div>
 
-                  <div>
-                    <p className="text-xs font-bold text-gray-500 uppercase mb-2">Permisos Habilitados:</p>
-                    <div className="flex flex-wrap gap-4 text-xs">
-                      <label className="flex items-center gap-1.5 cursor-pointer">
-                        <input type="checkbox" checked={permisos.eventos ?? true} onChange={() => togglePermiso(sol.id, 'eventos', permisos.eventos ?? true, permisos)} className="rounded text-blue-900 focus:ring-blue-500" />
-                        <span>📅 Eventos</span>
-                      </label>
-                      <label className="flex items-center gap-1.5 cursor-pointer">
-                        <input type="checkbox" checked={permisos.publicaciones ?? true} onChange={() => togglePermiso(sol.id, 'publicaciones', permisos.publicaciones ?? true, permisos)} className="rounded text-blue-900 focus:ring-blue-500" />
-                        <span>📰 Anuncios</span>
-                      </label>
-                      <label className="flex items-center gap-1.5 cursor-pointer">
-                        <input type="checkbox" checked={permisos.asistencias ?? true} onChange={() => togglePermiso(sol.id, 'asistencias', permisos.asistencias ?? true, permisos)} className="rounded text-blue-900 focus:ring-blue-500" />
-                        <span>📋 Asistencias</span>
-                      </label>
+                  <div className="flex flex-wrap gap-2">
+                    {sol.estado === 'pendiente' && (
+                      <>
+                        <button onClick={() => cambiarEstado(sol.id, 'aprobado', sol)} className="bg-green-600 text-white px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-green-700 transition">
+                          ✓ Aprobar Acceso
+                        </button>
+                        <button onClick={() => cambiarEstado(sol.id, 'denegado')} className="bg-red-600 text-white px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-red-700 transition">
+                          ✕ Denegar
+                        </button>
+                      </>
+                    )}
+                    {sol.estado === 'aprobado' && (
+                      <button onClick={() => cambiarEstado(sol.id, 'denegado')} className="bg-red-100 text-red-700 border border-red-200 px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-red-200 transition">
+                        🚫 Revocar Acceso
+                      </button>
+                    )}
+                    {sol.estado === 'denegado' && (
+                      <button onClick={() => cambiarEstado(sol.id, 'aprobado', sol)} className="bg-blue-600 text-white px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-blue-700 transition">
+                        🔄 Reaprobar Acceso
+                      </button>
+                    )}
+                    <button onClick={() => eliminarRegistro(sol.id)} className="bg-gray-200 text-gray-700 px-2.5 py-1.5 rounded-lg text-xs font-bold hover:bg-gray-300 transition" title="Eliminar registro">
+                      🗑️
+                    </button>
+                  </div>
+                </div>
+
+                {sol.estado === 'aprobado' && (
+                  <div className="pt-3 border-t grid grid-cols-1 md:grid-cols-2 gap-4 bg-white p-3 rounded-lg border">
+                    <div>
+                      <p className="text-xs font-bold text-gray-500 uppercase mb-1">Credenciales Generadas:</p>
+                      <p className="text-xs text-gray-800"><strong>Usuario:</strong> <code className="bg-gray-100 px-1 py-0.5 rounded text-blue-900">{sol.usuarioGenerado}</code></p>
+                      <p className="text-xs text-gray-800"><strong>Contraseña:</strong> <code className="bg-gray-100 px-1 py-0.5 rounded text-blue-900">{sol.passwordGenerada}</code></p>
+                    </div>
+                    <div>
+                      <p className="text-xs font-bold text-gray-500 uppercase mb-2">Permisos Habilitados:</p>
+                      <div className="flex flex-wrap gap-4 text-xs">
+                        <label className="flex items-center gap-1.5 cursor-pointer">
+                          <input type="checkbox" checked={permisos.eventos ?? true} onChange={() => togglePermiso(sol.id, 'eventos', permisos.eventos ?? true, permisos)} className="rounded text-blue-900 focus:ring-blue-500" />
+                          <span>📅 Eventos</span>
+                        </label>
+                        <label className="flex items-center gap-1.5 cursor-pointer">
+                          <input type="checkbox" checked={permisos.publicaciones ?? true} onChange={() => togglePermiso(sol.id, 'publicaciones', permisos.publicaciones ?? true, permisos)} className="rounded text-blue-900 focus:ring-blue-500" />
+                          <span>📰 Anuncios</span>
+                        </label>
+                        <label className="flex items-center gap-1.5 cursor-pointer">
+                          <input type="checkbox" checked={permisos.asistencias ?? true} onChange={() => togglePermiso(sol.id, 'asistencias', permisos.asistencias ?? true, permisos)} className="rounded text-blue-900 focus:ring-blue-500" />
+                          <span>📋 Asistencias</span>
+                        </label>
+                      </div>
                     </div>
                   </div>
-                </div>
-              )}
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* TAB 2: CREAR / ELIMINAR EVENTOS MASTER */}
+      {pestanaMaster === 'eventos' && (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          <form onSubmit={handleCrearEventoMaster} className="space-y-4">
+            <h3 className="text-xl font-bold text-gray-800">Crear Taller o Conferencia (Modo Master)</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs font-bold text-gray-600 mb-1">Título</label>
+                <input required type="text" placeholder="Ej. Taller Robótica" className="w-full p-2 border rounded-lg outline-none focus:ring-2 focus:ring-blue-500 text-sm" value={nuevoEvento.titulo} onChange={e => setNuevoEvento({...nuevoEvento, titulo: e.target.value})} />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-gray-600 mb-1">Categoría</label>
+                <select className="w-full p-2 border rounded-lg outline-none focus:ring-2 focus:ring-blue-500 bg-white text-sm" value={nuevoEvento.categoria} onChange={e => setNuevoEvento({...nuevoEvento, categoria: e.target.value as any})}>
+                  <option value="talleres">Taller</option>
+                  <option value="conferencias">Conferencia</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-gray-600 mb-1">Expositor</label>
+                <input required type="text" placeholder="Ponente" className="w-full p-2 border rounded-lg outline-none focus:ring-2 focus:ring-blue-500 text-sm" value={nuevoEvento.expositor} onChange={e => setNuevoEvento({...nuevoEvento, expositor: e.target.value})} />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-gray-600 mb-1">Cupo</label>
+                <input required type="number" className="w-full p-2 border rounded-lg outline-none focus:ring-2 focus:ring-blue-500 text-sm" value={nuevoEvento.cupo} onChange={e => setNuevoEvento({...nuevoEvento, cupo: e.target.value})} />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-gray-600 mb-1">Fecha</label>
+                <input required type="date" className="w-full p-2 border rounded-lg outline-none focus:ring-2 focus:ring-blue-500 text-sm" value={nuevoEvento.fecha} onChange={e => setNuevoEvento({...nuevoEvento, fecha: e.target.value})} />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-gray-600 mb-1">Hora</label>
+                <input required type="text" placeholder="Ej. 11:00 AM" className="w-full p-2 border rounded-lg outline-none focus:ring-2 focus:ring-blue-500 text-sm" value={nuevoEvento.hora} onChange={e => setNuevoEvento({...nuevoEvento, hora: e.target.value})} />
+              </div>
             </div>
-          );
-        })}
-      </div>
+            <div>
+              <label className="block text-xs font-bold text-gray-600 mb-1">Descripción</label>
+              <textarea required rows={3} placeholder="Detalles..." className="w-full p-2 border rounded-lg outline-none focus:ring-2 focus:ring-blue-500 text-sm" value={nuevoEvento.descripcion} onChange={e => setNuevoEvento({...nuevoEvento, descripcion: e.target.value})}></textarea>
+            </div>
+            <button type="submit" className="w-full bg-blue-900 text-white font-bold py-2 rounded-lg hover:bg-blue-800 transition">
+              Publicar Evento
+            </button>
+          </form>
+
+          <div className="space-y-3 border-l pl-0 lg:pl-6">
+            <h3 className="text-xl font-bold text-gray-800 mb-2">Todos los Eventos ({eventosMaster.length})</h3>
+            <div className="space-y-3 max-h-96 overflow-y-auto pr-1">
+              {eventosMaster.map(ev => (
+                <div key={ev.id} className="p-3 border rounded-lg bg-gray-50 flex justify-between items-center text-xs">
+                  <div>
+                    <span className="font-bold text-blue-900">{ev.titulo}</span> <span className="text-gray-400">({ev.categoria})</span>
+                    <p className="text-gray-500">{ev.fecha} - {ev.hora} | Por: {ev.creador}</p>
+                  </div>
+                  <button onClick={() => eliminarEventoMaster(ev.id)} className="bg-red-100 text-red-600 px-2.5 py-1 rounded font-bold hover:bg-red-200 transition">
+                    Eliminar
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* TAB 3: ANUNCIOS MASTER */}
+      {pestanaMaster === 'publicaciones' && (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          <form onSubmit={handleCrearPublicacionMaster} className="space-y-4">
+            <h3 className="text-xl font-bold text-gray-800">Nueva Publicación Cultural</h3>
+            <div>
+              <label className="block text-xs font-bold text-gray-600 mb-1">Título</label>
+              <input required type="text" placeholder="Ej. Torneo de Robótica" className="w-full p-2 border rounded-lg outline-none focus:ring-2 focus:ring-blue-500 text-sm" value={nuevaPub.titulo} onChange={e => setNuevaPub({...nuevaPub, titulo: e.target.value})} />
+            </div>
+            <div>
+              <label className="block text-xs font-bold text-gray-600 mb-1">Contenido</label>
+              <textarea required rows={5} placeholder="Escribe el mensaje..." className="w-full p-2 border rounded-lg outline-none focus:ring-2 focus:ring-blue-500 text-sm" value={nuevaPub.contenido} onChange={e => setNuevaPub({...nuevaPub, contenido: e.target.value})}></textarea>
+            </div>
+            <button type="submit" className="w-full bg-blue-900 text-white font-bold py-2 rounded-lg hover:bg-blue-800 transition">
+              Publicar Anuncio
+            </button>
+          </form>
+
+          <div className="space-y-3 border-l pl-0 lg:pl-6">
+            <h3 className="text-xl font-bold text-gray-800 mb-2">Todos los Anuncios ({publicacionesMaster.length})</h3>
+            <div className="space-y-3 max-h-96 overflow-y-auto pr-1">
+              {publicacionesMaster.map(pub => (
+                <div key={pub.id} className="p-3 border rounded-lg bg-gray-50 flex justify-between items-center text-xs">
+                  <div>
+                    <p className="font-bold text-purple-900">{pub.titulo}</p>
+                    <p className="text-gray-500 line-clamp-1">{pub.contenido}</p>
+                  </div>
+                  <button onClick={() => eliminarPublicacionMaster(pub.id)} className="bg-red-100 text-red-600 px-2.5 py-1 rounded font-bold hover:bg-red-200 transition">
+                    Eliminar
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* TAB 4: ASISTENCIAS Y ELIMINACIÓN DE ALUMNOS MASTER */}
+      {pestanaMaster === 'asistencias' && (
+        <div className="space-y-4">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+            <h3 className="text-xl font-bold text-gray-800">Alumnos Inscritos por Evento (Master View)</h3>
+            {listaAlumnos.length > 0 && (
+              <button onClick={exportarCSVMaster} className="bg-green-700 text-white px-4 py-2 rounded-lg text-xs font-bold hover:bg-green-800 transition flex items-center gap-1.5 shadow">
+                📊 Exportar Lista a Excel (CSV)
+              </button>
+            )}
+          </div>
+          
+          {eventosMaster.length === 0 ? (
+            <p className="text-gray-500">Aún no hay eventos registrados.</p>
+          ) : (
+            <>
+              <div className="max-w-md">
+                <label className="block text-xs font-bold text-gray-600 mb-1">Selecciona un Evento:</label>
+                <select className="w-full p-2 border rounded-lg bg-white outline-none focus:ring-2 focus:ring-blue-500 font-medium text-sm" value={eventoSeleccionadoId} onChange={e => setEventoSeleccionadoId(e.target.value)}>
+                  {eventosMaster.map(ev => (
+                    <option key={ev.id} value={ev.id}>{ev.titulo} ({ev.categoria})</option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="border rounded-lg overflow-hidden mt-4 shadow-sm">
+                <table className="w-full text-left text-sm text-gray-600">
+                  <thead className="bg-gray-100 text-gray-800 uppercase text-xs">
+                    <tr>
+                      <th className="p-3">#</th>
+                      <th className="p-3">Nombre del Alumno</th>
+                      <th className="p-3">N. Control</th>
+                      <th className="p-3">Correo</th>
+                      <th className="p-3">Fecha Inscripción</th>
+                      <th className="p-3 text-right">Acción</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y">
+                    {cargandoLista ? (
+                      <tr><td colSpan={6} className="p-4 text-center">Cargando lista...</td></tr>
+                    ) : listaAlumnos.length === 0 ? (
+                      <tr><td colSpan={6} className="p-4 text-center text-gray-400">No hay alumnos inscritos en este evento todavía.</td></tr>
+                    ) : (
+                      listaAlumnos.map((al, index) => (
+                        <tr key={al.id} className="hover:bg-gray-50">
+                          <td className="p-3 font-bold">{index + 1}</td>
+                          <td className="p-3 font-medium text-gray-900">{al.nombreAlumno}</td>
+                          <td className="p-3">{al.controlAlumno}</td>
+                          <td className="p-3">{al.correoAlumno}</td>
+                          <td className="p-3 text-xs text-gray-400">{new Date(al.fechaRegistro).toLocaleDateString()}</td>
+                          <td className="p-3 text-right">
+                            <button onClick={() => eliminarAlumnoInscritoMaster(al.id)} className="bg-red-100 text-red-600 px-2.5 py-1 rounded text-xs font-bold hover:bg-red-200 transition">
+                              🗑️ Eliminar
+                            </button>
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </>
+          )}
+        </div>
+      )}
     </div>
   );
 };
