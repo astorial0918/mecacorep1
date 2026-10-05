@@ -14,12 +14,50 @@ import {
   Lock,
   User,
   Search,
-  Sparkles
+  Sparkles,
+  Plus,
+  Trash2,
+  LogOut
 } from 'lucide-react';
 
 export default function App() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [activeTab, setActiveTab] = useState('Inicio');
+
+  // ESTADO DE AUTENTICACIÓN ADMIN
+  const [isAdminLoggedIn, setIsAdminLoggedIn] = useState(false);
+  const [userInput, setUserInput] = useState('');
+  const [passInput, setPassInput] = useState('');
+  const [loginError, setLoginError] = useState('');
+
+  // ESTADO DINÁMICO DE TALLERES
+  const [talleres, setTalleres] = useState([
+    {
+      id: 1,
+      titulo: 'Programación de PLC Siemens S7-1200',
+      descripcion: 'Curso intensivo de automatización industrial, lógica de escalones (Ladder) e integración de sensores.',
+      lugar: 'Lab de Robótica ITH',
+      horarios: 'Sábados 9:00 AM',
+      estado: 'Inscripciones Abiertas',
+      colorEstado: 'cyan'
+    },
+    {
+      id: 2,
+      titulo: 'Diseño y Modelado 3D en SolidWorks',
+      descripcion: 'Fundamentos de ensamble mecánico, tolerancias y preparación de piezas para impresión 3D.',
+      lugar: 'Centro de Cómputo ITH',
+      horarios: 'Viernes 4:00 PM',
+      estado: 'Cupo Limitado',
+      colorEstado: 'blue'
+    }
+  ]);
+
+  // FORMULARIO NUEVO TALLER
+  const [nuevoTitulo, setNuevoTitulo] = useState('');
+  const [nuevaDesc, setNuevaDesc] = useState('');
+  const [nuevoLugar, setNuevoLugar] = useState('');
+  const [nuevoHorario, setNuevoHorario] = useState('');
+  const [nuevoEstado, setNuevoEstado] = useState('Inscripciones Abiertas');
 
   const navItems = [
     { name: 'Inicio', icon: BookOpen },
@@ -28,6 +66,48 @@ export default function App() {
     { name: 'Social/Cultural', icon: Users },
     { name: 'Diplomas', icon: Award },
   ];
+
+  // MANEJADORES DE ACCIONES ADMIN
+  const handleLogin = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (userInput.trim() === 'admin@ith.edu.mx' && passInput.trim() === 'admin2026') {
+      setIsAdminLoggedIn(true);
+      setLoginError('');
+      setUserInput('');
+      setPassInput('');
+    } else {
+      setLoginError('Credenciales incorrectas. Verifica tu usuario o contraseña.');
+    }
+  };
+
+  const handleLogout = () => {
+    setIsAdminLoggedIn(false);
+  };
+
+  const handleEliminarTaller = (id: number) => {
+    setTalleres(talleres.filter((taller) => taller.id !== id));
+  };
+
+  const handleAgregarTaller = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!nuevoTitulo || !nuevaDesc) return;
+
+    const nuevoItem = {
+      id: Date.now(),
+      titulo: nuevoTitulo,
+      descripcion: nuevaDesc,
+      lugar: nuevoLugar || 'Instalaciones ITH',
+      horarios: nuevoHorario || 'Por confirmar',
+      estado: nuevoEstado,
+      colorEstado: nuevoEstado === 'Cupo Limitado' ? 'blue' : 'cyan'
+    };
+
+    setTalleres([...talleres, nuevoItem]);
+    setNuevoTitulo('');
+    setNuevaDesc('');
+    setNuevoLugar('');
+    setNuevoHorario('');
+  };
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col justify-between font-sans selection:bg-cyan-500 selection:text-slate-950">
@@ -55,7 +135,7 @@ export default function App() {
               </div>
             </div>
 
-            {/* NAV DE ESCRITORIO (PC) */}
+            {/* NAV DE ESCRITORIO */}
             <nav className="hidden lg:flex items-center gap-1 bg-slate-950/60 p-1.5 rounded-xl border border-slate-800">
               {navItems.map((item) => (
                 <button
@@ -72,16 +152,17 @@ export default function App() {
               ))}
             </nav>
 
-            {/* BOTÓN ACCESO STAFF (Abre la vista dedicada de Login) */}
+            {/* BOTÓN ACCESO STAFF */}
             <div className="hidden md:flex items-center gap-3">
               <button 
                 onClick={() => setActiveTab('Acceso Staff')}
-                className={`px-4 py-2 text-xs sm:text-sm font-bold rounded-lg transition-all shadow-lg active:scale-95 ${
+                className={`px-4 py-2 text-xs sm:text-sm font-bold rounded-lg transition-all shadow-lg active:scale-95 flex items-center gap-2 ${
                   activeTab === 'Acceso Staff'
                     ? 'bg-cyan-400 text-slate-950 shadow-cyan-500/30'
                     : 'bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-slate-950 shadow-cyan-500/20'
                 }`}
               >
+                {isAdminLoggedIn && <span className="w-2 h-2 rounded-full bg-emerald-950 animate-pulse"></span>}
                 Acceso Staff
               </button>
             </div>
@@ -142,10 +223,10 @@ export default function App() {
         )}
       </header>
 
-      {/* ÁREA DE CONTENIDO DINÁMICO */}
+      {/* ÁREA DE CONTENIDO */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12 w-full flex-grow space-y-8 sm:space-y-12">
         
-        {/* BANNER SUPERIOR */}
+        {/* BANNER ENCABEZADO */}
         <div className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-slate-900 via-slate-900/90 to-slate-950 border border-slate-800 p-6 sm:p-10 shadow-2xl">
           <div className="absolute top-0 right-0 -mt-12 -mr-12 w-64 h-64 bg-cyan-500/10 rounded-full blur-3xl pointer-events-none"></div>
           <div className="absolute bottom-0 left-1/3 -mb-12 w-64 h-64 bg-blue-600/10 rounded-full blur-3xl pointer-events-none"></div>
@@ -181,7 +262,7 @@ export default function App() {
                 </div>
                 <h3 className="font-bold text-white text-lg mb-2">Talleres de Formación</h3>
                 <p className="text-xs sm:text-sm text-slate-400 leading-relaxed mb-4">
-                  Aprende programación de PLC, diseño 3D, microcontroladores y control automático con prácticas reales.
+                  Actualmente hay {talleres.length} taller(es) disponible(s).
                 </p>
                 <span className="text-xs text-cyan-400 font-semibold flex items-center gap-1 group-hover:translate-x-1 transition-transform">
                   Ver talleres disponibles <ChevronRight className="w-4 h-4" />
@@ -240,39 +321,43 @@ export default function App() {
           </div>
         )}
 
-        {/* 2. VISTA: TALLERES */}
+        {/* 2. VISTA: TALLERES (LECTURA DINÁMICA DE ESTADO) */}
         {activeTab === 'Talleres' && (
           <div className="space-y-6">
             <h3 className="text-xl sm:text-2xl font-bold text-white flex items-center gap-2">
               <Calendar className="w-6 h-6 text-cyan-400" /> Cursos y Prácticas Mecatrónicas
             </h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="bg-slate-900/80 p-6 rounded-2xl border border-slate-800 space-y-3">
-                <span className="px-2.5 py-1 rounded-md text-[10px] font-mono bg-cyan-500/20 text-cyan-400 border border-cyan-500/30 uppercase">
-                  Inscripciones Abiertas
-                </span>
-                <h4 className="text-lg font-bold text-white">Programación de PLC Siemens S7-1200</h4>
-                <p className="text-xs sm:text-sm text-slate-400">
-                  Curso intensivo de automatización industrial, lógica de escalones (Ladder) e integración de sensores.
-                </p>
-                <div className="pt-2 text-xs text-slate-500 font-mono">
-                  Lugar: Lab de Robótica ITH | Horarios: Sábados 9:00 AM
-                </div>
-              </div>
 
-              <div className="bg-slate-900/80 p-6 rounded-2xl border border-slate-800 space-y-3">
-                <span className="px-2.5 py-1 rounded-md text-[10px] font-mono bg-blue-500/20 text-blue-400 border border-blue-500/30 uppercase">
-                  Cupo Limitado
-                </span>
-                <h4 className="text-lg font-bold text-white">Diseño y Modelado 3D en SolidWorks</h4>
-                <p className="text-xs sm:text-sm text-slate-400">
-                  Fundamentos de ensamble mecánico, tolerancias y preparación de piezas para impresión 3D.
-                </p>
-                <div className="pt-2 text-xs text-slate-500 font-mono">
-                  Lugar: Centro de Cómputo ITH | Horarios: Viernes 4:00 PM
-                </div>
+            {talleres.length === 0 ? (
+              <div className="bg-slate-900/50 p-12 rounded-2xl border border-slate-800 text-center space-y-3">
+                <p className="text-slate-400 text-sm">No hay talleres publicados por el momento.</p>
+                <p className="text-xs text-slate-600">Puedes publicar nuevos talleres desde el panel de Acceso Staff.</p>
               </div>
-            </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {talleres.map((taller) => (
+                  <div key={taller.id} className="bg-slate-900/80 p-6 rounded-2xl border border-slate-800 space-y-3 flex flex-col justify-between">
+                    <div className="space-y-3">
+                      <span className={`inline-block px-2.5 py-1 rounded-md text-[10px] font-mono border uppercase ${
+                        taller.colorEstado === 'blue' 
+                          ? 'bg-blue-500/20 text-blue-400 border-blue-500/30' 
+                          : 'bg-cyan-500/20 text-cyan-400 border-cyan-500/30'
+                      }`}>
+                        {taller.estado}
+                      </span>
+                      <h4 className="text-lg font-bold text-white">{taller.titulo}</h4>
+                      <p className="text-xs sm:text-sm text-slate-400 leading-relaxed">
+                        {taller.descripcion}
+                      </p>
+                    </div>
+
+                    <div className="pt-3 border-t border-slate-800/80 text-xs text-slate-500 font-mono">
+                      Lugar: {taller.lugar} | Horarios: {taller.horarios}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         )}
 
@@ -355,66 +440,207 @@ export default function App() {
           </div>
         )}
 
-        {/* 6. VISTA EXCLUSIVA: ACCESO STAFF (LOGIN) */}
+        {/* 6. VISTA: ACCESO STAFF (FORMULARIO O PANEL DE GESTIÓN) */}
         {activeTab === 'Acceso Staff' && (
-          <div className="max-w-md mx-auto bg-slate-900/90 backdrop-blur-md p-6 sm:p-8 rounded-2xl border border-slate-800 shadow-2xl space-y-6">
-            <div>
-              <div className="flex items-center gap-2 mb-1">
-                <Lock className="w-5 h-5 text-cyan-400" />
-                <h3 className="text-xl font-bold text-white">Acceso Administrativo</h3>
-              </div>
-              <p className="text-xs sm:text-sm text-slate-400">
-                Exclusivo para coordinadores y equipo de trabajo.
-              </p>
-            </div>
+          <div>
+            {!isAdminLoggedIn ? (
+              /* FORMULARIO DE LOGIN */
+              <div className="max-w-md mx-auto bg-slate-900/90 backdrop-blur-md p-6 sm:p-8 rounded-2xl border border-slate-800 shadow-2xl space-y-6">
+                <div>
+                  <div className="flex items-center gap-2 mb-1">
+                    <Lock className="w-5 h-5 text-cyan-400" />
+                    <h3 className="text-xl font-bold text-white">Acceso Administrativo</h3>
+                  </div>
+                  <p className="text-xs sm:text-sm text-slate-400">
+                    Ingresa con las credenciales de Staff.
+                  </p>
+                </div>
 
-            <form className="space-y-4" onSubmit={(e) => e.preventDefault()}>
-              <div>
-                <label className="block text-xs font-medium text-slate-300 uppercase tracking-wider mb-1.5">
-                  Usuario o Correo
-                </label>
-                <div className="relative">
-                  <User className="w-4 h-4 text-slate-500 absolute left-3.5 top-3.5" />
-                  <input 
-                    type="text" 
-                    placeholder="usuario@ith.edu.mx" 
-                    className="w-full pl-10 pr-4 py-2.5 bg-slate-950/80 border border-slate-700/80 rounded-xl text-sm focus:outline-none focus:border-cyan-400 focus:ring-1 focus:ring-cyan-400 transition text-white placeholder-slate-600"
-                  />
+                {loginError && (
+                  <div className="p-3 bg-rose-500/10 border border-rose-500/30 rounded-xl text-rose-400 text-xs">
+                    {loginError}
+                  </div>
+                )}
+
+                <form className="space-y-4" onSubmit={handleLogin}>
+                  <div>
+                    <label className="block text-xs font-medium text-slate-300 uppercase tracking-wider mb-1.5">
+                      Usuario o Correo
+                    </label>
+                    <div className="relative">
+                      <User className="w-4 h-4 text-slate-500 absolute left-3.5 top-3.5" />
+                      <input 
+                        type="text" 
+                        value={userInput}
+                        onChange={(e) => setUserInput(e.target.value)}
+                        placeholder="admin@ith.edu.mx" 
+                        className="w-full pl-10 pr-4 py-2.5 bg-slate-950/80 border border-slate-700/80 rounded-xl text-sm focus:outline-none focus:border-cyan-400 focus:ring-1 focus:ring-cyan-400 transition text-white placeholder-slate-600"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-medium text-slate-300 uppercase tracking-wider mb-1.5">
+                      Contraseña
+                    </label>
+                    <div className="relative">
+                      <Lock className="w-4 h-4 text-slate-500 absolute left-3.5 top-3.5" />
+                      <input 
+                        type="password" 
+                        value={passInput}
+                        onChange={(e) => setPassInput(e.target.value)}
+                        placeholder="••••••••" 
+                        className="w-full pl-10 pr-4 py-2.5 bg-slate-950/80 border border-slate-700/80 rounded-xl text-sm focus:outline-none focus:border-cyan-400 focus:ring-1 focus:ring-cyan-400 transition text-white placeholder-slate-600"
+                      />
+                    </div>
+                  </div>
+
+                  <button 
+                    type="submit" 
+                    className="w-full py-3 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-slate-950 font-bold rounded-xl transition-all shadow-lg shadow-cyan-500/20 text-sm active:scale-[0.99]"
+                  >
+                    Iniciar Sesión
+                  </button>
+                </form>
+
+                <div className="pt-5 border-t border-slate-800/80 text-center space-y-3">
+                  <p className="text-xs text-slate-400">
+                    ¿Eres miembro del equipo y aún no posees credenciales?
+                  </p>
+                  <button className="w-full py-2.5 px-4 bg-slate-800/70 hover:bg-slate-800 text-cyan-400 font-semibold rounded-xl border border-cyan-500/30 hover:border-cyan-400/60 transition-all text-xs sm:text-sm">
+                    Solicitar Acceso Staff
+                  </button>
                 </div>
               </div>
+            ) : (
+              /* PANEL DE ADMINISTRACIÓN ACTIVO */
+              <div className="space-y-8">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 bg-slate-900/90 p-6 rounded-2xl border border-cyan-500/30">
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <ShieldCheck className="w-5 h-5 text-emerald-400" />
+                      <h3 className="text-xl font-bold text-white">Panel de Administración</h3>
+                    </div>
+                    <p className="text-xs text-slate-400">Sesión iniciada como Staff Activo</p>
+                  </div>
 
-              <div>
-                <label className="block text-xs font-medium text-slate-300 uppercase tracking-wider mb-1.5">
-                  Contraseña
-                </label>
-                <div className="relative">
-                  <Lock className="w-4 h-4 text-slate-500 absolute left-3.5 top-3.5" />
-                  <input 
-                    type="password" 
-                    placeholder="••••••••" 
-                    className="w-full pl-10 pr-4 py-2.5 bg-slate-950/80 border border-slate-700/80 rounded-xl text-sm focus:outline-none focus:border-cyan-400 focus:ring-1 focus:ring-cyan-400 transition text-white placeholder-slate-600"
-                  />
+                  <button 
+                    onClick={handleLogout}
+                    className="px-4 py-2 bg-slate-800 hover:bg-rose-950/50 hover:text-rose-400 border border-slate-700 hover:border-rose-500/30 text-slate-300 font-semibold text-xs rounded-xl transition flex items-center gap-2"
+                  >
+                    <LogOut className="w-4 h-4" />
+                    Cerrar Sesión
+                  </button>
+                </div>
+
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+                  
+                  {/* FORMULARIO AGREGAR TALLER */}
+                  <div className="lg:col-span-5 bg-slate-900/80 p-6 rounded-2xl border border-slate-800 space-y-4">
+                    <h4 className="font-bold text-white text-base flex items-center gap-2">
+                      <Plus className="w-4 h-4 text-cyan-400" /> Agregar Nuevo Taller
+                    </h4>
+
+                    <form onSubmit={handleAgregarTaller} className="space-y-3">
+                      <div>
+                        <label className="block text-[10px] font-mono text-slate-400 uppercase mb-1">Título del Taller</label>
+                        <input 
+                          type="text" 
+                          value={nuevoTitulo}
+                          onChange={(e) => setNuevoTitulo(e.target.value)}
+                          placeholder="Ej: Impresión 3D Avanzada"
+                          className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-lg text-xs text-white focus:outline-none focus:border-cyan-400"
+                          required
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-[10px] font-mono text-slate-400 uppercase mb-1">Descripción</label>
+                        <textarea 
+                          value={nuevaDesc}
+                          onChange={(e) => setNuevaDesc(e.target.value)}
+                          placeholder="Resumen del contenido práctico..."
+                          className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-lg text-xs text-white focus:outline-none focus:border-cyan-400 h-20 resize-none"
+                          required
+                        />
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-2">
+                        <div>
+                          <label className="block text-[10px] font-mono text-slate-400 uppercase mb-1">Lugar</label>
+                          <input 
+                            type="text" 
+                            value={nuevoLugar}
+                            onChange={(e) => setNuevoLugar(e.target.value)}
+                            placeholder="Lab Robótica"
+                            className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-lg text-xs text-white focus:outline-none focus:border-cyan-400"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-[10px] font-mono text-slate-400 uppercase mb-1">Horario</label>
+                          <input 
+                            type="text" 
+                            value={nuevoHorario}
+                            onChange={(e) => setNuevoHorario(e.target.value)}
+                            placeholder="Sábados 10 AM"
+                            className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-lg text-xs text-white focus:outline-none focus:border-cyan-400"
+                          />
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="block text-[10px] font-mono text-slate-400 uppercase mb-1">Estado</label>
+                        <select 
+                          value={nuevoEstado}
+                          onChange={(e) => setNuevoEstado(e.target.value)}
+                          className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-lg text-xs text-white focus:outline-none focus:border-cyan-400"
+                        >
+                          <option value="Inscripciones Abiertas">Inscripciones Abiertas</option>
+                          <option value="Cupo Limitado">Cupo Limitado</option>
+                        </select>
+                      </div>
+
+                      <button 
+                        type="submit"
+                        className="w-full py-2.5 bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold rounded-xl text-xs transition shadow-lg shadow-cyan-500/20"
+                      >
+                        Publicar Taller
+                      </button>
+                    </form>
+                  </div>
+
+                  {/* LISTA Y BORRADO DE TALLERES */}
+                  <div className="lg:col-span-7 space-y-4">
+                    <h4 className="font-bold text-white text-base">Talleres Publicados ({talleres.length})</h4>
+
+                    {talleres.length === 0 ? (
+                      <p className="text-xs text-slate-500">No hay talleres cargados actualmente.</p>
+                    ) : (
+                      <div className="space-y-3">
+                        {talleres.map((taller) => (
+                          <div key={taller.id} className="bg-slate-900/80 p-4 rounded-xl border border-slate-800 flex items-center justify-between gap-4">
+                            <div>
+                              <h5 className="text-sm font-bold text-white">{taller.titulo}</h5>
+                              <p className="text-xs text-slate-400 line-clamp-1">{taller.descripcion}</p>
+                              <span className="text-[10px] text-cyan-400 font-mono">{taller.estado}</span>
+                            </div>
+
+                            <button 
+                              onClick={() => handleEliminarTaller(taller.id)}
+                              className="p-2 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 rounded-lg border border-rose-500/30 transition shrink-0"
+                              title="Eliminar Taller"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
                 </div>
               </div>
-
-              <button 
-                type="submit" 
-                className="w-full py-3 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-slate-950 font-bold rounded-xl transition-all shadow-lg shadow-cyan-500/20 text-sm active:scale-[0.99]"
-              >
-                Iniciar Sesión
-              </button>
-            </form>
-
-            <div className="pt-5 border-t border-slate-800/80 text-center space-y-3">
-              <p className="text-xs text-slate-400">
-                ¿Eres miembro del equipo y aún no posees credenciales?
-              </p>
-              
-              {/* BOTÓN SOLICITAR ACCESO STAFF (SIN EMOJIS) */}
-              <button className="w-full py-2.5 px-4 bg-slate-800/70 hover:bg-slate-800 text-cyan-400 font-semibold rounded-xl border border-cyan-500/30 hover:border-cyan-400/60 transition-all text-xs sm:text-sm">
-                Solicitar Acceso Staff
-              </button>
-            </div>
+            )}
           </div>
         )}
 
